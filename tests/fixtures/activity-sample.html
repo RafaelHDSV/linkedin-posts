@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="pt-BR">
+  <body>
+    <main>
+      <div class="feed-shared-update-v2" data-urn="urn:li:activity:1111111111">
+        <div class="update-components-text">Concluí mais um curso na Udemy sobre TypeScript avançado.</div>
+        <div class="update-components-image">
+          <img class="update-components-image__image" src="https://media.licdn.com/img/a.jpg" />
+        </div>
+        <div class="social-details-social-counts">
+          <span class="social-details-social-counts__reactions-count">42</span>
+        </div>
+      </div>
+
+      <div class="feed-shared-update-v2" data-urn="urn:li:activity:2222222222">
+        <div class="update-components-text">Lancei um projeto open source hoje. Feedback e bem-vindo!</div>
+        <div class="update-components-linkedin-video">
+          <video src="https://media.licdn.com/video/b.mp4"></video>
+        </div>
+        <div class="social-details-social-counts">
+          <span class="social-details-social-counts__reactions-count">1.234</span>
+        </div>
+      </div>
+
+      <div class="feed-shared-update-v2" data-urn="urn:li:activity:3333333333">
+        <div class="update-components-text">Post apenas com texto, sem midia.</div>
+        <div class="social-details-social-counts">
+          <span class="social-details-social-counts__reactions-count">1,2 mil</span>
+        </div>
+      </div>
+
+      <!-- Bloco sem urn de atividade: deve ser ignorado -->
+      <div class="feed-shared-update-v2" data-urn="urn:li:share:9999999999">
+        <div class="update-components-text">Compartilhamento que nao e activity.</div>
+      </div>
+
+      <!-- Duplicata da primeira activity: nao deve gerar post repetido -->
+      <div class="feed-shared-update-v2" data-urn="urn:li:activity:1111111111">
+        <div class="update-components-text">Duplicata.</div>
+      </div>
+    </main>
+  </body>
+</html>
