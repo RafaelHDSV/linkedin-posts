@@ -1,0 +1,36 @@
+{
+  "name": "linkedin-posts-api",
+  "version": "1.0.0",
+  "description": "Servico que coleta posts publicos do LinkedIn via scraping autenticado e expoe uma API REST de cache, reutilizavel por N clientes.",
+  "private": true,
+  "license": "UNLICENSED",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "auth:login": "tsx src/cli/authLogin.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "fastify": "^5.2.1",
+    "linkedom": "^0.18.9",
+    "mongoose": "^8.9.5",
+    "node-cron": "^3.0.3",
+    "pino": "^9.6.0",
+    "playwright": "^1.49.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "@types/node-cron": "^3.0.11",
+    "pino-pretty": "^13.0.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "vitest": "^2.1.8"
+  }
+}

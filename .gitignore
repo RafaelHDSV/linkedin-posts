@@ -1,0 +1,23 @@
+# Dependencias
+node_modules/
+
+# Build
+dist/
+
+# Segredos e ambiente
+.env
+.env.local
+.env.*.local
+
+# Sessao autenticada do LinkedIn (NUNCA versionar)
+storage/
+
+# Logs
+*.log
+
+# Sistema operacional / editor
+.DS_Store
+Thumbs.db
+
+# Configuracao pessoal do hub Cursor (nao faz parte do produto)
+.cursor/
