@@ -43,6 +43,8 @@ Variaveis principais (ver `.env.example`):
 
 ## Uso local
 
+> **Login:** `yarn auth:login` abre o navegador para você autenticar (incluindo 2FA). Não há relogin automático quando a sessão expira — isso é limitação do LinkedIn, não do deploy. Detalhes em [`docs/hospedagem-vercel.md` §4.4](docs/hospedagem-vercel.md#44-renovação-da-sessão-sem-login-automático).
+
 ```bash
 # 1. Login manual no LinkedIn (gera storage/session.json)
 yarn auth:login
@@ -55,6 +57,8 @@ yarn scrape rafael-vieira1720
 ```
 
 ## Deploy na Vercel
+
+A coleta roda sozinha via cron; o **login LinkedIn continua manual** quando a sessão expirar (`auth:login` + `session:upload` no PC). Sem login automático na falha — ver [§4.4 do guia](docs/hospedagem-vercel.md#44-renovação-da-sessão-sem-login-automático).
 
 ```bash
 # Apos auth:login, envie a sessao para o Supabase Storage

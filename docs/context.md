@@ -9,6 +9,7 @@ Servico que coleta os posts publicos de perfis do LinkedIn via scraping autentic
 - A API nunca dispara scraping em tempo real — sempre serve dados ja coletados e cacheados.
 - Um unico servico, N consumidores.
 - Prioridade em reduzir o risco de bloqueio da conta do LinkedIn usada para coleta (throttling, intervalos, sessao persistida).
+- **Sessão LinkedIn:** login **manual** (`yarn auth:login`); coleta na nuvem é automática, mas **relogin automático na expiração não é suportado** (2FA, CAPTCHA, anti-bot). Ver [`hospedagem-vercel.md` §4.4](hospedagem-vercel.md#44-renovação-da-sessão-sem-login-automático).
 - Dados sempre normalizados no contrato `PostDTO`, desacoplado do HTML/DOM do LinkedIn.
 
 ## Arquitetura (resumo)
