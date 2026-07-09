@@ -20,8 +20,8 @@
       "memory": 1024
     },
     "api/cron/scrape.ts": {
-      "maxDuration": 300,
-      "memory": 3008
+      "maxDuration": 60,
+      "memory": 2048
     }
   }
 }
