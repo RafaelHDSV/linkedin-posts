@@ -36,6 +36,32 @@ async function scrollIncremental(page: Page, alvo: number): Promise<void> {
   }
 }
 
+/** Documentos do LinkedIn carregam preview via iframe/canvas apos scroll. */
+async function aguardarMidiasLazy(page: Page): Promise<void> {
+  const documentos = page.locator(".document-s-container");
+  const total = await documentos.count().catch(() => 0);
+
+  for (let i = 0; i < total; i++) {
+    const container = documentos.nth(i);
+    await container.scrollIntoViewIfNeeded().catch(() => undefined);
+    await delayAleatorio(1_500, 2_500);
+    await container
+      .locator("img, canvas, .ssplayer-document__page")
+      .first()
+      .waitFor({ state: "attached", timeout: 8_000 })
+      .catch(() => undefined);
+  }
+
+  const videos = page.locator(".media-player__player, .update-components-linkedin-video");
+  const totalVideos = await videos.count().catch(() => 0);
+  for (let i = 0; i < Math.min(totalVideos, 6); i++) {
+    await videos.nth(i).scrollIntoViewIfNeeded().catch(() => undefined);
+    await delayAleatorio(400, 900);
+  }
+
+  await page.waitForTimeout(1_500);
+}
+
 export async function scrapeProfile(username: string, limite = LIMITE_PADRAO): Promise<ScrapeResult> {
   const sessao = await ensureValidSession();
   if (!sessao.valido) {
@@ -69,6 +95,7 @@ export async function scrapeProfile(username: string, limite = LIMITE_PADRAO): P
     }
 
     await scrollIncremental(page, limite);
+    await aguardarMidiasLazy(page);
     const html = await page.content();
     const posts = parsearPostsDoHtml(html, username).slice(0, limite);
 

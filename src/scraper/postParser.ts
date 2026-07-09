@@ -12,6 +12,8 @@ export interface RawPost {
 }
 
 const ACTIVITY_BASE_URL = "https://www.linkedin.com/feed/update/";
+/** LinkedIn epoch minimo para IDs validos (2010-01-01). */
+const EPOCH_MS_MINIMO = 1_262_304_000_000;
 
 /**
  * Interface estrutural minima dos nos retornados pelo linkedom.
@@ -20,6 +22,7 @@ const ACTIVITY_BASE_URL = "https://www.linkedin.com/feed/update/";
 interface ParsedElement {
   getAttribute(nome: string): string | null;
   textContent: string | null;
+  innerHTML?: string;
   querySelector(seletor: string): ParsedElement | null;
   querySelectorAll(seletor: string): ArrayLike<ParsedElement>;
 }
@@ -27,6 +30,20 @@ interface ParsedElement {
 interface ParsedDocument {
   querySelectorAll(seletor: string): ArrayLike<ParsedElement>;
 }
+
+const SELETORES_TEXTO =
+  ".update-components-text, .feed-shared-update-v2__description, .feed-shared-text, .feed-shared-inline-show-more-text";
+
+const SELETORES_IMAGEM =
+  ".update-components-image, .feed-shared-image, .update-components-article__image, .feed-shared-external-video__image";
+
+const SELETORES_VIDEO =
+  "video, .update-components-linkedin-video, .feed-shared-external-video, [data-test-article-video], .update-components-linkedin-native-video, .vjs-poster, .vjs-poster-background, .media-player__player";
+
+const SELETORES_DOCUMENTO =
+  ".update-components-document, .document-s-container, .ssplayer-document, .update-components-document__container";
+
+const ATRIBUTOS_MIDIA = ["src", "data-delayed-url", "data-ghost-url", "data-src", "poster"] as const;
 
 /** Converte "1.234", "1,2 mil", "1.2K", "2M" em numero aproximado. */
 export function parsearReacoes(texto: string | null | undefined): number | undefined {
@@ -39,9 +56,6 @@ export function parsearReacoes(texto: string | null | undefined): number | undef
   const sufixo = match[2];
   if (!numeroBruto) return undefined;
 
-  // Locale pt-BR: "," e o separador decimal e "." o de milhar.
-  // Com sufixo (mil/mi/k/m) o numero pode ter decimal ("1,2 mil"); sem sufixo,
-  // contadores sao inteiros ("1.234" = 1234), entao removemos ambos separadores.
   const normalizado = sufixo
     ? numeroBruto.replace(/\./g, "").replace(",", ".")
     : numeroBruto.replace(/[.,]/g, "");
@@ -53,6 +67,123 @@ export function parsearReacoes(texto: string | null | undefined): number | undef
   else if (sufixo === "m" || sufixo === "mi") valor *= 1_000_000;
 
   return Math.round(valor);
+}
+
+/** Extrai o ID numerico de urn:li:activity:NNNN. */
+export function extrairActivityId(urn: string): string | null {
+  const match = urn.match(/urn:li:activity:(\d+)/);
+  return match?.[1] ?? null;
+}
+
+/**
+ * Decodifica timestamp do Snowflake ID do LinkedIn (41 bits superiores, ms Unix).
+ * Referencia: bit shift >> 22 sobre o ID de 19 digitos.
+ */
+export function parsearDataDoUrn(urn: string): string {
+  const id = extrairActivityId(urn);
+  if (!id) return "";
+
+  try {
+    const ms = Number(BigInt(id) >> 22n);
+    if (ms < EPOCH_MS_MINIMO) return "";
+    return new Date(ms).toISOString();
+  } catch {
+    return "";
+  }
+}
+
+export function limparTexto(texto: string): string {
+  return texto
+    .replace(/\s+/g, " ")
+    .replace(/\s*…mais\s*$/i, "")
+    .replace(/\s*hashtag#/gi, " #")
+    .trim();
+}
+
+function ehUrlMidiaValida(url: string): boolean {
+  if (!url || url.startsWith("data:") || url.startsWith("blob:")) return false;
+  if (url.includes("static.licdn.com")) return false;
+  if (url.includes("profile-displayphoto")) return false;
+  if (url.includes("ghost-person")) return false;
+  if (url.includes("/embeds/native-document.html")) return false;
+  return (
+    url.includes("media.licdn.com") ||
+    url.includes("licdn.com/dms/image") ||
+    url.includes("dms.licdn.com/playlist") ||
+    url.endsWith(".mp4") ||
+    url.includes("/video/")
+  );
+}
+
+function urlsDeBackground(style: string | null): string[] {
+  if (!style) return [];
+  const match = style.match(/url\(["']?([^"')]+)["']?\)/i);
+  return match?.[1] && ehUrlMidiaValida(match[1]) ? [match[1]] : [];
+}
+
+function decodificarEntidadesHtml(url: string): string {
+  return url.replace(/&amp;/g, "&").replace(/&quot;/g, '"');
+}
+
+/** Busca URLs de midia embutidas no HTML bruto do container (background-image, poster, etc.). */
+export function extrairMidiaUrlsDoHtmlBruto(htmlInterno: string): string[] {
+  const urls = new Set<string>();
+  const padroes = [
+    /https:\/\/media\.licdn\.com\/[^"'\s)<>\\]+/g,
+    /https:\/\/dms\.licdn\.com\/playlist\/[^"'\s)<>\\]+/g,
+  ];
+
+  for (const padrao of padroes) {
+    for (const match of htmlInterno.matchAll(padrao)) {
+      const url = decodificarEntidadesHtml(match[0]);
+      if (ehUrlMidiaValida(url)) urls.add(url);
+    }
+  }
+
+  return [...urls];
+}
+
+export function extrairMidiaUrls(el: ParsedElement): string[] {
+  const urls = new Set<string>();
+  const htmlInterno = el.innerHTML ?? "";
+
+  for (const url of extrairMidiaUrlsDoHtmlBruto(htmlInterno)) {
+    urls.add(url);
+  }
+
+  const candidatos = [
+    ...Array.from(el.querySelectorAll(`${SELETORES_IMAGEM} img, ${SELETORES_VIDEO} img`)),
+    ...Array.from(el.querySelectorAll(`${SELETORES_DOCUMENTO} img`)),
+    ...Array.from(el.querySelectorAll("video")),
+    ...Array.from(el.querySelectorAll("video source")),
+    ...Array.from(el.querySelectorAll(".vjs-poster, .vjs-poster-background")),
+    ...Array.from(el.querySelectorAll("img[src*='media.licdn.com']")),
+  ];
+
+  for (const node of candidatos) {
+    for (const attr of ATRIBUTOS_MIDIA) {
+      const valor = node.getAttribute(attr);
+      if (valor && ehUrlMidiaValida(valor)) urls.add(decodificarEntidadesHtml(valor));
+    }
+    for (const bg of urlsDeBackground(node.getAttribute("style"))) {
+      urls.add(bg);
+    }
+  }
+
+  for (const doc of Array.from(el.querySelectorAll(SELETORES_DOCUMENTO))) {
+    for (const img of Array.from(doc.querySelectorAll("img"))) {
+      for (const attr of ATRIBUTOS_MIDIA) {
+        const valor = img.getAttribute(attr);
+        if (valor && ehUrlMidiaValida(valor)) urls.add(decodificarEntidadesHtml(valor));
+      }
+    }
+    const htmlDoc = doc.innerHTML ?? "";
+    for (const url of extrairMidiaUrlsDoHtmlBruto(htmlDoc)) {
+      urls.add(url);
+    }
+  }
+
+  return [...urls];
 }
 
 export function inferirTipoMidia(raw: Pick<RawPost, "midiaVideos" | "midiaImagens" | "midiaDocumentos">): TipoMidia {
@@ -75,9 +206,9 @@ export function normalizePost(raw: RawPost, profileUsername: string): PostDTO | 
   return {
     postId: raw.urn,
     profileUsername,
-    texto: raw.texto.trim(),
+    texto: limparTexto(raw.texto),
     url,
-    publicadoEm: "",
+    publicadoEm: parsearDataDoUrn(raw.urn),
     tipoMidia: inferirTipoMidia(raw),
     midiaUrls: raw.midiaUrls,
     reacoesCount: parsearReacoes(raw.reacoesTexto),
@@ -88,9 +219,6 @@ export function normalizePost(raw: RawPost, profileUsername: string): PostDTO | 
 /**
  * Extrai posts a partir do HTML da pagina de atividade.
  * Funcao pura (usa linkedom), o que a torna testavel com fixtures — sem navegador.
- *
- * Os seletores sao best-effort para o layout atual do LinkedIn e estao isolados
- * aqui para facilitar ajuste quando o layout mudar (ver riscos da epic).
  */
 export function parsearPostsDoHtml(html: string, profileUsername: string): PostDTO[] {
   const { document } = parseHTML(html) as unknown as { document: ParsedDocument };
@@ -106,19 +234,11 @@ export function parsearPostsDoHtml(html: string, profileUsername: string): PostD
     if (!urn || !urn.includes("urn:li:activity")) continue;
     if (vistos.has(urn)) continue;
 
-    const textoEl = el.querySelector(
-      ".update-components-text, .feed-shared-update-v2__description, .feed-shared-text",
-    );
-    const midiaImagens = el.querySelectorAll(
-      ".update-components-image img, img.update-components-image__image",
-    ).length;
-    const midiaVideos = el.querySelectorAll("video, .update-components-linkedin-video").length;
-    const midiaDocumentos = el.querySelectorAll(
-      ".update-components-document, .document-s-container",
-    ).length;
-    const midiaUrls = Array.from(el.querySelectorAll(".update-components-image img"))
-      .map((img: ParsedElement) => img.getAttribute("src"))
-      .filter((src): src is string => Boolean(src));
+    const textoEl = el.querySelector(SELETORES_TEXTO);
+    const midiaImagens = el.querySelectorAll(`${SELETORES_IMAGEM} img, img.update-components-image__image`).length;
+    const midiaVideos = el.querySelectorAll(SELETORES_VIDEO).length;
+    const midiaDocumentos = el.querySelectorAll(SELETORES_DOCUMENTO).length;
+    const midiaUrls = extrairMidiaUrls(el);
 
     const reacoesEl = el.querySelector(
       ".social-details-social-counts__reactions-count, .social-details-social-counts__social-proof-fallback-number",
@@ -141,5 +261,7 @@ export function parsearPostsDoHtml(html: string, profileUsername: string): PostD
     }
   }
 
-  return posts;
+  return posts.sort(
+    (a, b) => new Date(b.publicadoEm).getTime() - new Date(a.publicadoEm).getTime(),
+  );
 }
