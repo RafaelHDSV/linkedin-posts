@@ -1,8 +1,8 @@
 import type { FastifyInstance } from "fastify";
-import { ProfileModel } from "../../db/models/Profile.js";
-import { PostModel } from "../../db/models/Post.js";
+import { buscarPerfilPorUsername } from "../../db/repositories/profiles.js";
+import { listarPostsPaginados } from "../../db/repositories/posts.js";
 import { apiKeyAuth } from "../middlewares/apiKeyAuth.js";
-import type { ApiError, PostDTO, PostsResponse, TipoMidia } from "../../shared/types.js";
+import type { ApiError, PostDTO, PostsResponse } from "../../shared/types.js";
 
 interface PostsQuery {
   limit?: string;
@@ -24,31 +24,24 @@ export async function postRoutes(app: FastifyInstance): Promise<void> {
       const { username } = request.params;
       const { limit, page, skip } = paginacao(request.query);
 
-      const perfil = await ProfileModel.findOne({ username }).lean();
+      const perfil = await buscarPerfilPorUsername(username);
       if (!perfil) {
         const erro: ApiError = { erro: "perfil_nao_encontrado", detalhe: `Perfil '${username}' nao cadastrado` };
         return reply.code(404).send(erro);
       }
 
-      const [documentos, total] = await Promise.all([
-        PostModel.find({ profileUsername: username })
-          .sort({ publicadoEm: -1, coletadoEm: -1 })
-          .skip(skip)
-          .limit(limit)
-          .lean(),
-        PostModel.countDocuments({ profileUsername: username }),
-      ]);
+      const { posts: linhas, total } = await listarPostsPaginados(username, skip, limit);
 
-      const posts: PostDTO[] = documentos.map((d) => ({
-        postId: d.postId,
-        profileUsername: d.profileUsername,
+      const posts: PostDTO[] = linhas.map((d) => ({
+        postId: d.post_id,
+        profileUsername: d.profile_username,
         texto: d.texto ?? "",
         url: d.url,
-        publicadoEm: d.publicadoEm ? new Date(d.publicadoEm).toISOString() : "",
-        tipoMidia: (d.tipoMidia ?? "texto") as TipoMidia,
-        midiaUrls: d.midiaUrls ?? [],
-        reacoesCount: d.reacoesCount ?? undefined,
-        coletadoEm: d.coletadoEm ? new Date(d.coletadoEm).toISOString() : "",
+        publicadoEm: d.publicado_em ? new Date(d.publicado_em).toISOString() : "",
+        tipoMidia: d.tipo_midia,
+        midiaUrls: d.midia_urls ?? [],
+        reacoesCount: d.reacoes_count ?? undefined,
+        coletadoEm: d.coletado_em ? new Date(d.coletado_em).toISOString() : "",
       }));
 
       const resposta: PostsResponse = {

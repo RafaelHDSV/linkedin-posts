@@ -1,9 +1,11 @@
-import { PostModel } from "../db/models/Post.js";
-import { ProfileModel } from "../db/models/Profile.js";
+import {
+  registrarColetaFalha,
+  registrarColetaSucesso,
+} from "../db/repositories/profiles.js";
+import { upsertPosts } from "../db/repositories/posts.js";
 import { scrapeProfile } from "../scraper/profileScraper.js";
 import { comBackoff } from "../shared/retry.js";
 import { logger } from "../shared/logger.js";
-import type { PostDTO } from "../shared/types.js";
 
 export interface ColetaResultado {
   username: string;
@@ -16,54 +18,16 @@ export interface ColetaResultado {
 const LIMITE_ALERTA_FALHAS = 3;
 
 async function registrarFalha(username: string, erro: string): Promise<void> {
-  const perfil = await ProfileModel.findOneAndUpdate(
-    { username },
-    { $set: { ultimaColetaEm: new Date(), ultimoStatus: "erro" }, $inc: { falhasConsecutivas: 1 } },
-    { new: true },
-  ).lean();
+  const { falhasConsecutivas } = await registrarColetaFalha(username);
 
-  const falhas = perfil?.falhasConsecutivas ?? 1;
-  if (falhas >= LIMITE_ALERTA_FALHAS) {
+  if (falhasConsecutivas >= LIMITE_ALERTA_FALHAS) {
     logger.error(
-      { username, falhasConsecutivas: falhas, erro },
+      { username, falhasConsecutivas, erro },
       "ALERTA: perfil com falhas consecutivas — verifique sessao do LinkedIn, bloqueio ou mudanca de layout",
     );
   } else {
-    logger.warn({ username, falhasConsecutivas: falhas, erro }, "Coleta finalizada com erro");
+    logger.warn({ username, falhasConsecutivas, erro }, "Coleta finalizada com erro");
   }
-}
-
-async function registrarSucesso(username: string): Promise<void> {
-  await ProfileModel.updateOne(
-    { username },
-    { $set: { ultimaColetaEm: new Date(), ultimoStatus: "sucesso", falhasConsecutivas: 0 } },
-  );
-}
-
-/** Upsert deduplicado por postId: nao gera duplicatas em reexecucoes. */
-export async function upsertPosts(username: string, posts: PostDTO[]): Promise<void> {
-  if (posts.length === 0) return;
-
-  const operacoes = posts.map((post) => ({
-    updateOne: {
-      filter: { postId: post.postId },
-      update: {
-        $set: {
-          profileUsername: username,
-          texto: post.texto,
-          url: post.url,
-          publicadoEm: post.publicadoEm ? new Date(post.publicadoEm) : null,
-          tipoMidia: post.tipoMidia,
-          midiaUrls: post.midiaUrls,
-          reacoesCount: post.reacoesCount,
-          coletadoEm: new Date(post.coletadoEm),
-        },
-      },
-      upsert: true,
-    },
-  }));
-
-  await PostModel.bulkWrite(operacoes, { ordered: false });
 }
 
 export async function executarColeta(username: string): Promise<ColetaResultado> {
@@ -80,7 +44,7 @@ export async function executarColeta(username: string): Promise<ColetaResultado>
     }
 
     await upsertPosts(username, resultado.posts);
-    await registrarSucesso(username);
+    await registrarColetaSucesso(username);
 
     logger.info({ username, total: resultado.posts.length }, "Coleta concluida");
     return { username, status: "sucesso", postsColetados: resultado.posts.length };

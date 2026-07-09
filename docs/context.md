@@ -2,7 +2,7 @@
 
 ## O que e
 
-Servico que coleta os posts publicos de perfis do LinkedIn via scraping autenticado (Playwright) e expoe uma API REST de cache (Fastify + MongoDB), reutilizavel por N clientes. O primeiro consumidor real e a secao "posts recentes" do portfolio pessoal.
+Servico que coleta os posts publicos de perfis do LinkedIn via scraping autenticado (Playwright) e expoe uma API REST de cache (Fastify + Supabase/PostgreSQL), reutilizavel por N clientes. O primeiro consumidor real e a secao "posts recentes" do portfolio pessoal.
 
 ## Principios
 
@@ -14,14 +14,16 @@ Servico que coleta os posts publicos de perfis do LinkedIn via scraping autentic
 ## Arquitetura (resumo)
 
 - `src/scraper/` — Playwright: sessao autenticada, navegacao e extracao de posts.
-- `src/scheduler/` — cron interno que coleta periodicamente e persiste (upsert por `postId`).
-- `src/db/` — conexao e modelos `Profile` e `Post` (MongoDB via Mongoose).
+- `src/scheduler/` — cron interno que coleta periodicamente e persiste (upsert por `post_id`).
+- `src/db/` — cliente Supabase e repositorios (`linkedin_posts_profiles`, `linkedin_posts_posts`).
 - `src/api/` — API REST Fastify, autenticada por header `x-api-key`, somente leitura do cache.
 - `src/shared/` — tipos, logger e utilitario de retry/backoff.
+- `supabase/migrations/` — schema PostgreSQL com prefixo `linkedin_posts_` nas tabelas.
 
 ## Referencias
 
 - Epic e fases: pasta `.issues/` deste repositorio.
+- Configuracao pendente: [`docs/configuracao-pendente.md`](configuracao-pendente.md).
 - Perfil de referencia: https://www.linkedin.com/in/rafael-vieira1720/
 
 ## Aviso legal

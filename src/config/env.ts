@@ -21,7 +21,8 @@ function lerNumero(nome: string, padrao: number): number {
 }
 
 export const env = {
-  mongodbUri: lerString("MONGODB_URI", "mongodb://localhost:27017/linkedin_posts"),
+  supabaseUrl: lerString("SUPABASE_URL"),
+  supabaseServiceRoleKey: lerString("SUPABASE_SERVICE_ROLE_KEY"),
   apiKey: lerString("API_KEY"),
   port: lerNumero("PORT", 3333),
   scrapeIntervalHours: lerNumero("SCRAPE_INTERVAL_HOURS", 6),

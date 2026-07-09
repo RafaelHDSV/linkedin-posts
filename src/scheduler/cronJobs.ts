@@ -1,14 +1,14 @@
 import cron, { type ScheduledTask } from "node-cron";
-import { ProfileModel } from "../db/models/Profile.js";
+import { listarPerfisAtivos } from "../db/repositories/profiles.js";
 import { env } from "../config/env.js";
 import { logger } from "../shared/logger.js";
 import { executarColeta } from "./collector.js";
 
 let executando = false;
 
-function coletaVencida(ultimaColetaEm: Date | null, intervaloHoras: number): boolean {
+function coletaVencida(ultimaColetaEm: string | null, intervaloHoras: number): boolean {
   if (!ultimaColetaEm) return true;
-  const proxima = ultimaColetaEm.getTime() + intervaloHoras * 60 * 60 * 1_000;
+  const proxima = new Date(ultimaColetaEm).getTime() + intervaloHoras * 60 * 60 * 1_000;
   return Date.now() >= proxima;
 }
 
@@ -35,13 +35,10 @@ export async function rodarCicloDeColeta(): Promise<void> {
   const inicio = Date.now();
 
   try {
-    const perfis = await ProfileModel.find({ ativo: true }).lean();
+    const perfis = await listarPerfisAtivos();
     const pendentes = perfis
       .filter((p) =>
-        coletaVencida(
-          p.ultimaColetaEm ?? null,
-          p.intervaloColetaHoras ?? env.scrapeIntervalHours,
-        ),
+        coletaVencida(p.ultima_coleta_em, p.intervalo_coleta_horas ?? env.scrapeIntervalHours),
       )
       .map((p) => p.username);
 
@@ -69,7 +66,6 @@ export function agendarColetas(): ScheduledTask {
     void rodarCicloDeColeta();
   });
   logger.info("Scheduler de coleta agendado (a cada hora)");
-  // Dispara um ciclo inicial logo apos o start (perfis novos/vencidos).
   void rodarCicloDeColeta();
   return tarefa;
 }
