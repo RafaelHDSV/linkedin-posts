@@ -1,0 +1,27 @@
+{
+  "version": 2,
+  "buildCommand": "yarn build",
+  "installCommand": "yarn install",
+  "framework": null,
+  "rewrites": [
+    { "source": "/health", "destination": "/api/health" },
+    { "source": "/profiles", "destination": "/api/profiles" },
+    { "source": "/profiles/:path*", "destination": "/api/profiles/:path*" }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/scrape",
+      "schedule": "0 * * * *"
+    }
+  ],
+  "functions": {
+    "api/[...path].ts": {
+      "maxDuration": 30,
+      "memory": 1024
+    },
+    "api/cron/scrape.ts": {
+      "maxDuration": 300,
+      "memory": 3008
+    }
+  }
+}

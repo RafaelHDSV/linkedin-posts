@@ -8,67 +8,78 @@ Servico que coleta os posts publicos de perfis do LinkedIn via scraping autentic
 
 - Node.js >= 22 + TypeScript
 - Playwright (Chromium headless) para o scraping
-- Supabase (PostgreSQL) para o cache
+- Supabase (PostgreSQL + Storage) para cache e sessao na nuvem
 - Fastify para a API REST
-- node-cron para a coleta agendada
+- node-cron (local) ou Vercel Cron Jobs (producao)
 - pino para logs estruturados
 
 ## Pre-requisitos
 
 - Node.js >= 22 e Yarn
-- Projeto [Supabase](https://supabase.com) com o schema aplicado (ver [`docs/configuracao-pendente.md`](docs/configuracao-pendente.md))
+- Projeto [Supabase](https://supabase.com) com schema e bucket de sessao (ver [`docs/hospedagem-vercel.md`](docs/hospedagem-vercel.md))
 
-## Configuracao
+## Configuracao local
 
 ```bash
 yarn install
 yarn playwright install chromium
-cp .env.example .env   # SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, API_KEY
+cp .env.example .env
 ```
 
-Aplique a migracao SQL em `supabase/migrations/` no SQL Editor do Supabase (passo a passo em [`docs/configuracao-pendente.md`](docs/configuracao-pendente.md)).
+Aplique a migracao SQL em `supabase/migrations/` no SQL Editor do Supabase.
 
-Variaveis de ambiente (ver `.env.example`):
+Variaveis principais (ver `.env.example`):
 
 | Variavel | Descricao |
 |---|---|
 | `SUPABASE_URL` | URL do projeto Supabase |
 | `SUPABASE_SERVICE_ROLE_KEY` | Chave service_role (somente backend) |
-| `API_KEY` | Chave exigida no header `x-api-key` dos clientes |
-| `PORT` | Porta do servidor HTTP (padrao 3333) |
-| `SCRAPE_INTERVAL_HOURS` | Intervalo padrao de coleta por perfil |
-| `SCRAPE_CONCURRENCY` | Perfis coletados em paralelo (mantenha baixo) |
-| `SESSION_STORAGE_PATH` | Caminho do arquivo de sessao do LinkedIn |
-| `LOG_LEVEL` | Nivel de log |
+| `API_KEY` | Header `x-api-key` dos clientes |
+| `CRON_SECRET` | Protege `/api/cron/scrape` (obrigatorio na Vercel) |
+| `SESSION_STORAGE_PROVIDER` | `local` (dev) ou `supabase` (Vercel) |
+| `SESSION_LOCAL_PATH` | Arquivo local da sessao (`storage/session.json`) |
+| `SESSION_STORAGE_BUCKET` | Bucket privado no Supabase Storage |
+| `SESSION_REMOTE_PATH` | Objeto no bucket (`session/session.json`) |
 
-## Uso
+## Uso local
 
 ```bash
-# 1. Gerar a sessao autenticada do LinkedIn (login manual, uma vez)
+# 1. Login manual no LinkedIn (gera storage/session.json)
 yarn auth:login
 
-# 2. Subir o servico (API + coleta agendada)
+# 2. API + cron interno (node-cron)
 yarn dev
 
-# 3. (Opcional) Forcar coleta imediata de um perfil ja cadastrado — ignora o intervalo do cron
+# 3. (Opcional) Coleta manual imediata
 yarn scrape rafael-vieira1720
+```
+
+## Deploy na Vercel
+
+```bash
+# Apos auth:login, envie a sessao para o Supabase Storage
+yarn session:upload
+
+# Conecte o repo na Vercel (vercel.json ja incluso) e configure as env vars
+# Guia completo: docs/hospedagem-vercel.md
 ```
 
 ## Scripts
 
 | Script | Acao |
 |---|---|
-| `yarn dev` | Sobe o servico em modo watch |
-| `yarn build` | Compila para `dist/` |
-| `yarn start` | Executa o build |
-| `yarn auth:login` | Fluxo de login manual e geracao da sessao |
-| `yarn scrape <username>` | Coleta manual imediata (ignora intervalo do cron) |
-| `yarn test` | Roda os testes (vitest) |
-| `yarn typecheck` | Checagem de tipos sem emitir |
+| `yarn dev` | API + cron local (`node-cron`) |
+| `yarn build` | Compila `src/` → `dist/` |
+| `yarn start` | Processo always-on local |
+| `yarn auth:login` | Login manual LinkedIn (somente local) |
+| `yarn session:upload` | Envia `session.json` para Supabase Storage |
+| `yarn scrape <username>` | Coleta manual imediata |
+| `yarn test` | Testes (vitest) |
+| `yarn typecheck` | Checagem de tipos |
 
 ## API
 
-Todas as rotas de dados exigem o header `x-api-key`. A `GET /health` e publica.
+Todas as rotas de dados exigem `x-api-key`. `GET /health` e publica.
 
 ```bash
 curl http://localhost:3333/health
@@ -81,20 +92,14 @@ curl "http://localhost:3333/profiles/rafael-vieira1720/posts?limit=3" \
   -H "x-api-key: $API_KEY"
 ```
 
-Codigos de erro: `401` (API key ausente/invalida), `404` (perfil nao cadastrado), `400` (requisicao invalida).
-
 ## Observabilidade
 
-- Logs estruturados (pino) em todo o ciclo: conexao, coleta, API.
-- Alerta quando um perfil acumula falhas consecutivas (>= 3).
-- A API expoe `coletadoEm` em cada post para transparencia de atualidade do cache.
-
-## Deploy
-
-Ambiente always-on com Chromium headless (VPS, Railway, Render). Persista `storage/session.json` em volume. Configure as mesmas variaveis de ambiente do `.env.example`.
+- Logs estruturados (pino) em conexao, coleta e API.
+- Alerta com >= 3 falhas consecutivas por perfil.
+- Campo `coletadoEm` em cada post.
 
 ## Documentacao
 
-- **Configuracao pendente (checklist):** [`docs/configuracao-pendente.md`](docs/configuracao-pendente.md)
-- Contexto do produto: [`docs/context.md`](docs/context.md)
-- Especificacao (epic e fases): pasta [`.issues/`](.issues/)
+- **Hospedagem Vercel:** [`docs/hospedagem-vercel.md`](docs/hospedagem-vercel.md)
+- Contexto: [`docs/context.md`](docs/context.md)
+- Epic e fases: [`.issues/`](.issues/)

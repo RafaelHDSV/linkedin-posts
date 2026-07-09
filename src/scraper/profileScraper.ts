@@ -1,4 +1,4 @@
-import type { Page } from "playwright";
+import type { Page } from "playwright-core";
 import { logger } from "../shared/logger.js";
 import { delayAleatorio } from "../shared/retry.js";
 import type { PostDTO } from "../shared/types.js";

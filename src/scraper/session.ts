@@ -1,14 +1,10 @@
 import { mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
-import type { BrowserContext, Page } from "playwright";
+import type { BrowserContext, Page } from "playwright-core";
 import { env } from "../config/env.js";
 import { logger } from "../shared/logger.js";
-import {
-  launchBrowser,
-  createContext,
-  sessaoExiste,
-  sessaoTemCookieAuth,
-} from "./browser.js";
+import { launchBrowser, createContext } from "./browser.js";
+import { sessaoDisponivel, sessaoTemCookieAuth } from "../storage/sessionStorage.js";
 
 export type MotivoSessaoInvalida = "expirada" | "captcha" | "nao_autenticado";
 
@@ -49,7 +45,6 @@ async function aguardarEstabilizacao(page: Page): Promise<void> {
     page.waitForSelector(SELETORES_NAV, { timeout: 20_000 }),
   ]).catch(() => undefined);
 
-  // SPA do LinkedIn pode montar a nav apos domcontentloaded.
   await page.waitForTimeout(2_000);
 }
 
@@ -94,14 +89,18 @@ async function detectarEstado(page: Page, context: BrowserContext): Promise<Sess
 export async function ensureValidSession(): Promise<SessionStatus> {
   const verificadoEm = new Date().toISOString();
 
-  if (!sessaoExiste()) {
-    logger.warn("Nenhuma sessao encontrada. Rode `yarn auth:login` para gerar uma.");
+  if (!(await sessaoDisponivel())) {
+    logger.warn(
+      env.sessionStorageProvider === "supabase"
+        ? "Nenhuma sessao no Supabase Storage. Rode yarn auth:login e yarn session:upload."
+        : "Nenhuma sessao encontrada. Rode yarn auth:login para gerar uma.",
+    );
     return { valido: false, motivo: "nao_autenticado", verificadoEm };
   }
 
-  if (!sessaoTemCookieAuth()) {
+  if (!(await sessaoTemCookieAuth())) {
     logger.warn(
-      "Arquivo de sessao sem cookie li_at. Rode `yarn auth:login` e conclua o login ate o feed.",
+      "Sessao sem cookie li_at. Rode yarn auth:login e conclua o login ate o feed.",
     );
     return { valido: false, motivo: "nao_autenticado", verificadoEm };
   }
@@ -117,7 +116,7 @@ export async function ensureValidSession(): Promise<SessionStatus> {
     if (!status.valido) {
       logger.warn(
         { motivo: status.motivo, url: page.url() },
-        "Sessao do LinkedIn invalida. Rode `yarn auth:login` para renovar.",
+        "Sessao do LinkedIn invalida. Rode yarn auth:login para renovar.",
       );
     }
     return status;
@@ -131,10 +130,14 @@ export async function ensureValidSession(): Promise<SessionStatus> {
 
 /**
  * Abre um navegador visivel para login manual e salva o storageState.
- * Executado por `yarn auth:login`.
+ * Executado por `yarn auth:login` (somente ambiente local).
  */
 export async function loginInterativo(): Promise<void> {
-  await mkdir(dirname(env.sessionStoragePath), { recursive: true });
+  if (env.isServerless) {
+    throw new Error("auth:login nao pode rodar em ambiente serverless. Use sua maquina local.");
+  }
+
+  await mkdir(dirname(env.sessionLocalPath), { recursive: true });
 
   const browser = await launchBrowser(false);
   try {
@@ -144,11 +147,10 @@ export async function loginInterativo(): Promise<void> {
     logger.info("Abrindo o LinkedIn. Faca login manualmente (incluindo 2FA, se houver).");
     await page.goto("https://www.linkedin.com/login", { waitUntil: "domcontentloaded" });
 
-    // Aguarda o usuario concluir o login (redirecionamento para o feed).
     await page.waitForURL((url) => url.href.includes("/feed"), { timeout: 300_000 });
 
-    await context.storageState({ path: env.sessionStoragePath });
-    logger.info({ arquivo: env.sessionStoragePath }, "Sessao salva com sucesso.");
+    await context.storageState({ path: env.sessionLocalPath });
+    logger.info({ arquivo: env.sessionLocalPath }, "Sessao salva com sucesso.");
   } finally {
     await browser.close();
   }

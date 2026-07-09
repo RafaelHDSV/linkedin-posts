@@ -21,3 +21,4 @@ Thumbs.db
 
 # Configuracao pessoal do hub Cursor (nao faz parte do produto)
 .cursor/
+docs/hospedagem-vercel.md

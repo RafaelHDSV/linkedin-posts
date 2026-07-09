@@ -23,7 +23,8 @@ Servico que coleta os posts publicos de perfis do LinkedIn via scraping autentic
 ## Referencias
 
 - Epic e fases: pasta `.issues/` deste repositorio.
-- Configuracao pendente: [`docs/configuracao-pendente.md`](configuracao-pendente.md).
+- Configuracao pendente (checklist): ver variaveis em [`.env.example`](../.env.example) e migracao em [`supabase/migrations/`](../supabase/migrations/).
+- **Hospedagem Vercel:** [`hospedagem-vercel.md`](hospedagem-vercel.md)
 - Perfil de referencia: https://www.linkedin.com/in/rafael-vieira1720/
 
 ## Aviso legal

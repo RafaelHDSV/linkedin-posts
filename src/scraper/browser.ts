@@ -1,6 +1,10 @@
-import { existsSync, readFileSync } from "node:fs";
-import { chromium, type Browser, type BrowserContext } from "playwright";
+import type { Browser, BrowserContext } from "playwright-core";
 import { env } from "../config/env.js";
+import {
+  prepararArquivoSessao,
+  sessaoDisponivel,
+  sessaoTemCookieAuth,
+} from "../storage/sessionStorage.js";
 
 const USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
@@ -16,31 +20,39 @@ export interface LaunchOptions {
   comSessao?: boolean;
 }
 
-export async function launchBrowser(headless = env.scrapeHeadless): Promise<Browser> {
+async function chromiumLocal(headless: boolean) {
+  const { chromium } = await import("playwright");
   return chromium.launch({
     headless,
     args: CHROMIUM_ARGS,
   });
 }
 
-export function sessaoExiste(): boolean {
-  return existsSync(env.sessionStoragePath);
+async function chromiumServerless() {
+  const [{ chromium }, chromiumPkg] = await Promise.all([
+    import("playwright-core"),
+    import("@sparticuz/chromium"),
+  ]);
+
+  return chromium.launch({
+    args: [...chromiumPkg.default.args, ...CHROMIUM_ARGS],
+    executablePath: await chromiumPkg.default.executablePath(),
+    headless: true,
+  });
 }
 
-/** Verifica se o storageState salvo contem o cookie de sessao autenticada (li_at). */
-export function sessaoTemCookieAuth(): boolean {
-  if (!sessaoExiste()) return false;
-  try {
-    const bruto = readFileSync(env.sessionStoragePath, "utf8");
-    const estado = JSON.parse(bruto) as { cookies?: Array<{ name: string; value?: string }> };
-    return (
-      estado.cookies?.some((cookie) => cookie.name === "li_at" && Boolean(cookie.value)) ??
-      false
-    );
-  } catch {
-    return false;
+export async function launchBrowser(headless = env.scrapeHeadless): Promise<Browser> {
+  if (env.isServerless) {
+    return chromiumServerless();
   }
+  return chromiumLocal(headless);
 }
+
+export async function sessaoExiste(): Promise<boolean> {
+  return sessaoDisponivel();
+}
+
+export { sessaoTemCookieAuth };
 
 async function aplicarEvasaoBasica(context: BrowserContext): Promise<void> {
   await context.addInitScript(() => {
@@ -55,13 +67,13 @@ export async function createContext(
   options: { comSessao?: boolean } = {},
 ): Promise<BrowserContext> {
   const { comSessao = true } = options;
-  const usarSessao = comSessao && sessaoExiste();
+  const caminhoSessao = comSessao ? await prepararArquivoSessao() : null;
 
   const context = await browser.newContext({
     userAgent: USER_AGENT,
     locale: "pt-BR",
     viewport: { width: 1366, height: 900 },
-    storageState: usarSessao ? env.sessionStoragePath : undefined,
+    storageState: caminhoSessao ?? undefined,
   });
 
   await aplicarEvasaoBasica(context);
