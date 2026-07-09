@@ -58,7 +58,7 @@ yarn scrape rafael-vieira1720
 
 ## Deploy na Vercel
 
-A coleta roda sozinha via cron; o **login LinkedIn continua manual** quando a sessão expirar (`auth:login` + `session:upload` no PC). Sem login automático na falha — ver [§4.4 do guia](docs/hospedagem-vercel.md#44-renovação-da-sessão-sem-login-automático).
+A coleta roda sozinha via cron (**1x/dia no Hobby**); o **login LinkedIn continua manual** quando a sessão expirar. Sem login automático na falha — ver [§4.4](docs/hospedagem-vercel.md#44-renovação-da-sessão-sem-login-automático) e limites do Hobby em [§6](docs/hospedagem-vercel.md#6-verceljson-exemplo).
 
 ```bash
 # Apos auth:login, envie a sessao para o Supabase Storage
