@@ -28,6 +28,8 @@ export const env = {
   scrapeIntervalHours: lerNumero("SCRAPE_INTERVAL_HOURS", 6),
   scrapeConcurrency: lerNumero("SCRAPE_CONCURRENCY", 1),
   sessionStoragePath: lerString("SESSION_STORAGE_PATH", "storage/session.json"),
+  /** false = navegador visivel nas coletas (util se o LinkedIn bloquear headless). */
+  scrapeHeadless: process.env.SCRAPE_HEADLESS !== "false",
   logLevel: lerString("LOG_LEVEL", "info"),
 } as const;
 

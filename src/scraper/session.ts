@@ -1,9 +1,14 @@
 import { mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
-import type { Page } from "playwright";
+import type { BrowserContext, Page } from "playwright";
 import { env } from "../config/env.js";
 import { logger } from "../shared/logger.js";
-import { launchBrowser, createContext, sessaoExiste } from "./browser.js";
+import {
+  launchBrowser,
+  createContext,
+  sessaoExiste,
+  sessaoTemCookieAuth,
+} from "./browser.js";
 
 export type MotivoSessaoInvalida = "expirada" | "captcha" | "nao_autenticado";
 
@@ -17,28 +22,69 @@ const FEED_URL = "https://www.linkedin.com/feed/";
 const LOGIN_HINT = "/login";
 const CHECKPOINT_HINT = "/checkpoint";
 
-async function detectarEstado(page: Page): Promise<SessionStatus> {
+const SELETORES_NAV =
+  "#global-nav, .global-nav, header.global-nav, nav.global-nav, [data-test-global-nav]";
+
+function urlIndicaLogin(url: string): boolean {
+  return url.includes(LOGIN_HINT) || url.includes("/authwall");
+}
+
+async function contextoTemLiAt(context: BrowserContext): Promise<boolean> {
+  const cookies = await context.cookies("https://www.linkedin.com");
+  return cookies.some((cookie) => cookie.name === "li_at" && cookie.value.length > 0);
+}
+
+async function aguardarEstabilizacao(page: Page): Promise<void> {
+  await page.waitForLoadState("domcontentloaded").catch(() => undefined);
+
+  await Promise.race([
+    page.waitForURL(
+      (url) =>
+        url.href.includes("/feed") ||
+        url.href.includes(LOGIN_HINT) ||
+        url.href.includes(CHECKPOINT_HINT) ||
+        url.href.includes("/authwall"),
+      { timeout: 20_000 },
+    ),
+    page.waitForSelector(SELETORES_NAV, { timeout: 20_000 }),
+  ]).catch(() => undefined);
+
+  // SPA do LinkedIn pode montar a nav apos domcontentloaded.
+  await page.waitForTimeout(2_000);
+}
+
+async function detectarEstado(page: Page, context: BrowserContext): Promise<SessionStatus> {
   const verificadoEm = new Date().toISOString();
   const urlAtual = page.url();
 
   if (urlAtual.includes(CHECKPOINT_HINT)) {
     return { valido: false, motivo: "captcha", verificadoEm };
   }
-  if (urlAtual.includes(LOGIN_HINT) || urlAtual.includes("/authwall")) {
+  if (urlIndicaLogin(urlAtual)) {
     return { valido: false, motivo: "expirada", verificadoEm };
   }
 
   const temGlobalNav = await page
-    .locator("#global-nav, .global-nav")
+    .locator(SELETORES_NAV)
     .first()
     .isVisible()
     .catch(() => false);
 
-  if (!temGlobalNav) {
-    return { valido: false, motivo: "nao_autenticado", verificadoEm };
+  if (temGlobalNav) {
+    return { valido: true, verificadoEm };
   }
 
-  return { valido: true, verificadoEm };
+  const temLiAt = await contextoTemLiAt(context);
+  if (temLiAt && urlAtual.includes("linkedin.com") && !urlIndicaLogin(urlAtual)) {
+    logger.debug(
+      { url: urlAtual },
+      "Nav nao detectada, mas cookie li_at presente — sessao considerada valida",
+    );
+    return { valido: true, verificadoEm };
+  }
+
+  logger.debug({ url: urlAtual, temLiAt }, "Sessao nao autenticada apos carregar o feed");
+  return { valido: false, motivo: "nao_autenticado", verificadoEm };
 }
 
 /**
@@ -53,16 +99,24 @@ export async function ensureValidSession(): Promise<SessionStatus> {
     return { valido: false, motivo: "nao_autenticado", verificadoEm };
   }
 
-  const browser = await launchBrowser(true);
+  if (!sessaoTemCookieAuth()) {
+    logger.warn(
+      "Arquivo de sessao sem cookie li_at. Rode `yarn auth:login` e conclua o login ate o feed.",
+    );
+    return { valido: false, motivo: "nao_autenticado", verificadoEm };
+  }
+
+  const browser = await launchBrowser();
   try {
     const context = await createContext(browser, { comSessao: true });
     const page = await context.newPage();
     await page.goto(FEED_URL, { waitUntil: "domcontentloaded", timeout: 30_000 });
-    const status = await detectarEstado(page);
+    await aguardarEstabilizacao(page);
+    const status = await detectarEstado(page, context);
 
     if (!status.valido) {
       logger.warn(
-        { motivo: status.motivo },
+        { motivo: status.motivo, url: page.url() },
         "Sessao do LinkedIn invalida. Rode `yarn auth:login` para renovar.",
       );
     }

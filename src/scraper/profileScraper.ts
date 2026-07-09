@@ -46,7 +46,7 @@ export async function scrapeProfile(username: string, limite = LIMITE_PADRAO): P
     };
   }
 
-  const browser = await launchBrowser(true);
+  const browser = await launchBrowser();
   try {
     const context = await createContext(browser, { comSessao: true });
     const page = await context.newPage();

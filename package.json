@@ -13,6 +13,7 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "auth:login": "tsx src/cli/authLogin.ts",
+    "scrape": "tsx src/cli/scrapeProfile.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },

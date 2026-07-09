@@ -142,7 +142,13 @@ curl "http://localhost:3333/profiles/rafael-vieira1720/posts?limit=3" \
   -H "x-api-key: SUA_API_KEY"
 ```
 
-A primeira coleta dispara no start do servico (se o perfil estiver vencido) e depois a cada hora.
+A primeira coleta dispara no start do servico (se o perfil estiver vencido) e depois a cada hora. Para testar **antes** do intervalo (padrao 6 h), use coleta manual:
+
+```bash
+yarn scrape rafael-vieira1720
+```
+
+Requisitos: perfil ja cadastrado (`POST /profiles`), sessao valida (`yarn auth:login`). Rode em outro terminal enquanto `yarn dev` estiver ativo (ou pare o dev — o CLI conecta ao Supabase sozinho).
 
 ---
 
@@ -164,7 +170,8 @@ A primeira coleta dispara no start do servico (se o perfil estiver vencido) e de
 | `Variavel de ambiente obrigatoria ausente` | `.env` ausente ou incompleto | Copie `.env.example` e preencha `SUPABASE_*` e `API_KEY` |
 | `Supabase indisponivel ou schema nao aplicado` | Migracao nao rodou ou URL/key erradas | Reaplique o SQL; confira `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` |
 | `401` na API | `x-api-key` ausente ou diferente de `API_KEY` | Alinhe o header com o valor do `.env` |
-| Coleta com `sessao_invalida` | Sem `storage/session.json` ou sessao expirada | `yarn auth:login` |
+| Coleta com `sessao_invalida` (logo apos `auth:login`) | LinkedIn bloqueando headless ou nav ainda nao montada | Atualize o codigo (validacao melhorada); se persistir, `SCRAPE_HEADLESS=false` no `.env` e rode `yarn scrape` de novo |
+| Coleta com `sessao_invalida` | Sem `storage/session.json`, cookie `li_at` ausente ou sessao expirada | `yarn auth:login` |
 | 0 posts apos coleta | Layout do LinkedIn mudou ou perfil sem posts publicos | Ver logs; ajustar seletores em `src/scraper/postParser.ts` |
 | `ALERTA: perfil com falhas consecutivas` | 3+ falhas seguidas | Renovar sessao; verificar bloqueio/CAPTCHA |
 

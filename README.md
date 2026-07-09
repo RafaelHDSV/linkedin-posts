@@ -49,6 +49,9 @@ yarn auth:login
 
 # 2. Subir o servico (API + coleta agendada)
 yarn dev
+
+# 3. (Opcional) Forcar coleta imediata de um perfil ja cadastrado — ignora o intervalo do cron
+yarn scrape rafael-vieira1720
 ```
 
 ## Scripts
@@ -59,6 +62,7 @@ yarn dev
 | `yarn build` | Compila para `dist/` |
 | `yarn start` | Executa o build |
 | `yarn auth:login` | Fluxo de login manual e geracao da sessao |
+| `yarn scrape <username>` | Coleta manual imediata (ignora intervalo do cron) |
 | `yarn test` | Roda os testes (vitest) |
 | `yarn typecheck` | Checagem de tipos sem emitir |
 
