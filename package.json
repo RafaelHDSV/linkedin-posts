@@ -15,6 +15,7 @@
     "auth:login": "tsx src/cli/authLogin.ts",
     "session:upload": "tsx src/cli/sessionUpload.ts",
     "scrape": "tsx src/cli/scrapeProfile.ts",
+    "scrape:on-logon": "tsx src/cli/scrapeOnLogon.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },

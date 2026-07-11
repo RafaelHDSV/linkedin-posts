@@ -1,33 +1,33 @@
 # Contexto do projeto — linkedin-posts-api
 
-## O que e
+## O que é
 
-Servico que coleta os posts publicos de perfis do LinkedIn via scraping autenticado (Playwright) e expoe uma API REST de cache (Fastify + Supabase/PostgreSQL), reutilizavel por N clientes. O primeiro consumidor real e a secao "posts recentes" do portfolio pessoal.
+Serviço que coleta posts públicos de perfis do LinkedIn via scraping autenticado (Playwright) e persiste um cache no Supabase/PostgreSQL. O primeiro consumidor é a seção "posts recentes" do portfólio pessoal, acessada por uma Function Vercel server-side.
 
 ## Principios
 
-- A API nunca dispara scraping em tempo real — sempre serve dados ja coletados e cacheados.
-- Um unico servico, N consumidores.
-- Prioridade em reduzir o risco de bloqueio da conta do LinkedIn usada para coleta (throttling, intervalos, sessao persistida).
-- **Sessão LinkedIn:** login **manual** (`yarn auth:login`); coleta na nuvem é automática, mas **relogin automático na expiração não é suportado** (2FA, CAPTCHA, anti-bot). Ver [`hospedagem-vercel.md` §4.4](hospedagem-vercel.md#44-renovação-da-sessão-sem-login-automático).
-- Dados sempre normalizados no contrato `PostDTO`, desacoplado do HTML/DOM do LinkedIn.
+- O portfólio nunca dispara scraping em tempo real — sempre lê dados já coletados e cacheados.
+- Prioridade em reduzir o risco de bloqueio da conta do LinkedIn usada para coleta.
+- **Sessão LinkedIn:** o login é manual. A tarefa do Windows valida a sessão a cada logon e só abre o navegador quando ela está inválida; não há relogin automático para 2FA, CAPTCHA ou credenciais.
+- Dados são normalizados no contrato `PostDTO`, desacoplado do HTML/DOM do LinkedIn.
 
 ## Arquitetura (resumo)
 
-- `src/scraper/` — Playwright: sessao autenticada, navegacao e extracao de posts.
-- `src/scheduler/` — cron interno que coleta periodicamente e persiste (upsert por `post_id`).
-- `src/db/` — cliente Supabase e repositorios (`linkedin_posts_profiles`, `linkedin_posts_posts`).
-- `src/api/` — API REST Fastify, autenticada por header `x-api-key`, somente leitura do cache.
-- `src/shared/` — tipos, logger e utilitario de retry/backoff.
+- `src/scraper/` — Playwright: sessão autenticada, navegação e extração de posts.
+- `src/cli/scrapeOnLogon.ts` — valida sessão, solicita login se necessário e coleta `rafael-vieira1720`.
+- `src/db/` — cliente Supabase e repositórios (`linkedin_posts_profiles`, `linkedin_posts_posts`).
+- `src/api/` — API REST Fastify, preservada para clientes internos e desenvolvimento.
+- `src/shared/` — tipos, logger e utilitário de retry/backoff.
 - `supabase/migrations/` — schema PostgreSQL com prefixo `linkedin_posts_` nas tabelas.
 
 ## Referencias
 
 - Epic e fases: pasta `.issues/` deste repositorio.
-- Configuracao pendente (checklist): ver variaveis em [`.env.example`](../.env.example) e migracao em [`supabase/migrations/`](../supabase/migrations/).
-- **Hospedagem Vercel:** [`hospedagem-vercel.md`](hospedagem-vercel.md)
-- Perfil de referencia: https://www.linkedin.com/in/rafael-vieira1720/
+- Configuração local e Agendador de Tarefas: [`coleta-local-logon.md`](coleta-local-logon.md).
+- Integração do portfólio: [`integracao-portfolio-supabase.md`](integracao-portfolio-supabase.md).
+- Hospedagem Vercel (opcional): [`hospedagem-vercel.md`](hospedagem-vercel.md).
+- Perfil de referência: https://www.linkedin.com/in/rafael-vieira1720/
 
 ## Aviso legal
 
-Scraping do LinkedIn viola os Termos de Uso da plataforma e pode levar a restricao/bloqueio da conta usada para login. Recomenda-se usar uma conta secundaria dedicada, nunca a conta pessoal principal. O servico e somente leitura de conteudo ja publico.
+Scraping do LinkedIn viola os Termos de Uso da plataforma e pode levar à restrição ou ao bloqueio da conta usada para login. Recomenda-se usar uma conta secundária dedicada, nunca a conta pessoal principal. O serviço é somente leitura de conteúdo já público.

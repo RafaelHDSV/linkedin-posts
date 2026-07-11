@@ -7,8 +7,8 @@ Servico que coleta os posts publicos de perfis do LinkedIn via scraping autentic
 ## Stack
 
 - Node.js >= 22 + TypeScript
-- Playwright (Chromium headless) para o scraping
-- Supabase (PostgreSQL + Storage) para cache e sessao na nuvem
+- Playwright (Chromium) para o scraping local
+- Supabase (PostgreSQL) para cache de posts
 - Fastify para a API REST
 - node-cron (local) ou Vercel Cron Jobs (producao)
 - pino para logs estruturados
@@ -41,24 +41,21 @@ Variaveis principais (ver `.env.example`):
 | `SESSION_STORAGE_BUCKET` | Bucket privado no Supabase Storage |
 | `SESSION_REMOTE_PATH` | Objeto no bucket (`session/session.json`) |
 
-## Uso local
+## Uso local (fluxo principal)
 
-> **Login:** `yarn auth:login` abre o navegador para você autenticar (incluindo 2FA). Não há relogin automático quando a sessão expira — isso é limitação do LinkedIn, não do deploy. Detalhes em [`docs/hospedagem-vercel.md` §4.4](docs/hospedagem-vercel.md#44-renovação-da-sessão-sem-login-automático).
+> **Automação no logon:** configure uma vez o Agendador de Tarefas do Windows. No primeiro logon depois que a sessão LinkedIn expirar, o navegador abre para login manual e o scrape é executado. Com sessão válida, a tarefa encerra silenciosamente. Veja [`docs/coleta-local-logon.md`](docs/coleta-local-logon.md).
 
 ```bash
-# 1. Login manual no LinkedIn (gera storage/session.json)
-yarn auth:login
+# 1. Registre a coleta local no logon do Windows
+powershell -ExecutionPolicy Bypass -File scripts/register-scrape-on-logon-task.ps1
 
-# 2. API + cron interno (node-cron)
-yarn dev
-
-# 3. (Opcional) Coleta manual imediata
+# 2. (Opcional) Coleta manual imediata após publicar um post
 yarn scrape rafael-vieira1720
 ```
 
 ## Deploy na Vercel
 
-A coleta roda sozinha via cron (**1x/dia no Hobby**); o **login LinkedIn continua manual** quando a sessão expirar. Sem login automático na falha — ver [§4.4](docs/hospedagem-vercel.md#44-renovação-da-sessão-sem-login-automático) e limites do Hobby em [§6](docs/hospedagem-vercel.md#6-verceljson-exemplo).
+Não use a Vercel como caminho principal para o scraping deste projeto. Para a frequência baixa de posts, a coleta local no logon reduz custo, complexidade e dependência de sessão remota. A configuração Vercel permanece documentada para uso futuro em [`docs/hospedagem-vercel.md`](docs/hospedagem-vercel.md).
 
 ```bash
 # Apos auth:login, envie a sessao para o Supabase Storage
@@ -78,6 +75,7 @@ yarn session:upload
 | `yarn auth:login` | Login manual LinkedIn (somente local) |
 | `yarn session:upload` | Envia `session.json` para Supabase Storage |
 | `yarn scrape <username>` | Coleta manual imediata |
+| `yarn scrape:on-logon` | Valida sessão; faz login e coleta somente se ela estiver inválida |
 | `yarn test` | Testes (vitest) |
 | `yarn typecheck` | Checagem de tipos |
 
