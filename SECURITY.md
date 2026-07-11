@@ -1,21 +1,23 @@
-# Politica de seguranca
+# Política de segurança
 
 ## Como reportar uma vulnerabilidade
 
-Se voce encontrou uma vulnerabilidade em **linkedin-posts**, por favor:
+Se você encontrou uma vulnerabilidade em **linkedin-posts**:
 
-- **Nao** abra uma issue publica.
-- Entre em contato direto com o mantenedor via e-mail ou DM privada.
-- Inclua passos para reproduzir, impacto e, se possivel, uma sugestao de correcao.
+- **Não** abra uma issue pública.
+- Entre em contato direto com o mantenedor (e-mail ou DM privada no GitHub/LinkedIn do autor do repositório).
+- Inclua passos para reproduzir, impacto estimado e, se possível, uma sugestão de correção.
 
-A resposta inicial ocorre em ate 7 dias uteis. Apos a correcao, voce sera creditado se desejar.
+A resposta inicial ocorre em até 7 dias úteis. Após a correção, você pode ser creditado se desejar.
 
-## Versoes suportadas
+## Versões suportadas
 
-Apenas a versao mais recente recebe correcoes de seguranca.
+Apenas a versão mais recente da branch principal recebe correções de segurança.
 
-## Boas praticas
+## Boas práticas ao usar o projeto
 
-- Nunca commite secrets (`.env`, tokens, chaves privadas).
-- Use o `.gitignore` do projeto como base.
-- Atualize dependencias regularmente.
+- Nunca commite secrets (`.env`, tokens, `storage/session.json`, chaves privadas).
+- Não exponha `SUPABASE_SERVICE_ROLE_KEY` no frontend.
+- Use conta LinkedIn **secundária** para o scrape.
+- Mantenha dependências atualizadas (`yarn outdated` / PRs de Dependabot, se habilitado).
+- Trate este software como ferramenta pessoal/avançada: scraping pode violar os Termos do LinkedIn.

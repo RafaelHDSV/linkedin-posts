@@ -1,27 +1,27 @@
-# Código de Conduta
+# Código de conduta
 
-## Nosso Compromisso
+## Nosso compromisso
 
-Comprometemo-nos a tornar a participação em nosso projeto uma experiência livre de assédio para todos.
+Com o interesse de fomentar uma comunidade aberta e acolhedora, nós, como contribuidores e mantenedores, comprometemo-nos a tornar a participação neste projeto uma experiência livre de assédio para todos, independentemente de idade, corpo, deficiência, etnia, identidade e expressão de gênero, nível de experiência, nacionalidade, aparência pessoal, raça, religião ou identidade e orientação sexual.
 
-## Nossos Padrões
+## Padrões
 
-Exemplos de comportamentos que contribuem para um ambiente positivo incluem:
-- Ser respeitoso e inclusivo
-- Aceitar críticas construtivas
+Exemplos de comportamento que contribuem para um ambiente positivo:
+
+- Usar linguagem acolhedora e inclusiva
+- Respeitar pontos de vista e experiências diferentes
+- Aceitar críticas construtivas com elegância
 - Focar no que é melhor para a comunidade
-- Demonstrar empatia pelos outros participantes
+- Mostrar empatia com outros membros
 
-Comportamentos inaceitáveis ​​incluem:
-- Assédio
-- Comentários ofensivos
-- Ataques pessoais
-- Discriminação de qualquer tipo
+Exemplos de comportamento inaceitável:
+
+- Linguagem ou imagens sexualizadas e atenção sexual indesejada
+- Trolling, comentários insultuosos/depreciativos e ataques pessoais ou políticos
+- Assédio público ou privado
+- Publicar informações privadas de terceiros sem permissão
+- Outras condutas inadequadas em um ambiente profissional
 
 ## Aplicação
 
-Os mantenedores do projeto são responsáveis ​​por esclarecer os padrões e podem remover ou editar contribuições que violem este código.
-
-## Denúncia
-
-Se você vivenciar ou presenciar um comportamento inaceitável, denuncie-o aos mantenedores do projeto.
+Comportamentos abusivos, de assédio ou inaceitáveis podem ser reportados ao mantenedor do projeto. Todas as reclamações serão analisadas e investigadas, resultando na resposta que for considerada necessária e apropriada às circunstâncias.

@@ -1,9 +1,9 @@
 {
-  "name": "linkedin-posts-api",
+  "name": "linkedin-posts",
   "version": "1.0.0",
-  "description": "Servico que coleta posts publicos do LinkedIn via scraping autenticado e expoe uma API REST de cache, reutilizavel por N clientes.",
+  "description": "Coleta local de posts públicos do LinkedIn (Playwright) com cache no Supabase para consumo em sites/portfólios.",
   "private": true,
-  "license": "UNLICENSED",
+  "license": "MIT",
   "type": "module",
   "engines": {
     "node": ">=22"

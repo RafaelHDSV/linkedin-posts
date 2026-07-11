@@ -11,7 +11,7 @@ export async function connectDatabase(): Promise<void> {
   if (error) {
     logger.error({ erro: error }, "Falha ao conectar ao Supabase");
     throw new Error(
-      `Supabase indisponivel ou schema nao aplicado: ${error.message}. Veja supabase/migrations/ e docs/hospedagem-vercel.md`,
+      `Supabase indisponivel ou schema nao aplicado: ${error.message}. Veja supabase/migrations/ e docs/setup-supabase.md`,
     );
   }
 

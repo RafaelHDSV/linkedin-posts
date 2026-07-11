@@ -1,4 +1,4 @@
-# Dependencias
+# Dependências
 node_modules/
 
 # Build
@@ -9,7 +9,7 @@ dist/
 .env.local
 .env.*.local
 
-# Sessao autenticada do LinkedIn (NUNCA versionar)
+# Sessão autenticada do LinkedIn (NUNCA versionar)
 /storage/
 
 # Logs
@@ -19,7 +19,8 @@ dist/
 .DS_Store
 Thumbs.db
 
-# Configuracao pessoal do hub Cursor (nao faz parte do produto)
+# Configuração pessoal do hub Cursor (não faz parte do produto)
 .cursor/
-docs/*
-.issues/*
+
+# Planejamento local / issues internas (não publicadas no clone)
+.issues/

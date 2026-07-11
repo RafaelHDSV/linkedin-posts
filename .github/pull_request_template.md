@@ -1,14 +1,21 @@
-## 📋 Descrição
-Descreva as alterações introduzidas nesta solicitação de pull request.
+## Descrição
+
 - Qual problema isso resolve?
 - O que foi alterado ou adicionado?
 
----
+## Como testar
 
-## 📸 Capturas de tela (se aplicável)
-Adicione capturas de tela para ajudar os revisores a entender a alteração.
+- [ ] `yarn typecheck`
+- [ ] `yarn test` (se aplicável)
+- [ ] `yarn build`
+- [ ] Passos manuais (scrape, login, docs):
 
----
+## Checklist
 
-## 📝 Observações adicionais
-Adicione qualquer contexto extra que possa ajudar os revisores.
+- [ ] Não inclui `.env`, sessão LinkedIn nem secrets
+- [ ] Docs atualizados se a mudança afeta o fluxo de quem clona o repo
+- [ ] Frequência/agressividade do scrape justificada (se alterada)
+
+## Observações
+
+Contexto extra para revisores (opcional).
