@@ -1,6 +1,8 @@
 # linkedin-posts
 
-<img src="./assets/fluxo-linkedin-posts.png" />
+<p align="center">
+  <img src="./assets/fluxo-linkedin-posts.png" alt="Fluxo do linkedin-posts: seu PC, Supabase e seu site" width="720" />
+</p>
 
 Coleta os **posts públicos** de um perfil do LinkedIn no seu PC, guarda o cache no **Supabase** e deixa qualquer site (portfólio, blog, landing) ler esses dados — sem hospedar o scraper na nuvem.
 
