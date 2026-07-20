@@ -43,7 +43,17 @@ export async function executarColeta(username: string): Promise<ColetaResultado>
       return { username, status: "erro", postsColetados: 0, erro: resultado.erro };
     }
 
-    await upsertPosts(username, resultado.posts);
+    try {
+      await upsertPosts(username, resultado.posts);
+    } catch (erroPersistencia) {
+      await registrarFalha(username, "falha_persistencia");
+      logger.error(
+        { username, erro: erroPersistencia },
+        "Falha ao persistir posts no Supabase (scrape ok, gravacao falhou)",
+      );
+      return { username, status: "erro", postsColetados: 0, erro: "falha_persistencia" };
+    }
+
     await registrarColetaSucesso(username);
 
     logger.info({ username, total: resultado.posts.length }, "Coleta concluida");

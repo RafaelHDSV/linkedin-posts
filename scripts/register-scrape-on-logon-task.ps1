@@ -25,7 +25,7 @@ Register-ScheduledTask `
   -Trigger $trigger `
   -Principal $principal `
   -Settings $settings `
-  -Description "Valida a sessão LinkedIn no logon e abre login manual apenas quando a sessão expira." `
+  -Description "Coleta os posts do LinkedIn no logon; abre login manual apenas quando a sessão expira." `
   -Force | Out-Null
 
 Write-Host "Tarefa '$taskName' registrada para o usuário $userId."

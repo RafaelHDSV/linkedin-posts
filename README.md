@@ -106,12 +106,12 @@ yarn scrape seu-username-linkedin
 
 No próximo logon do Windows:
 
-- **Sessão válida** → a tarefa encerra em silêncio (sem janela).
+- **Sessão válida** → coleta em silêncio (sem janela) e faz upsert no Supabase.
 - **Sessão expirada** → abre o LinkedIn para login manual e, após o feed, coleta o perfil do `SCRAPE_USERNAME`.
 
 Detalhes: [`docs/coleta-local-logon.md`](docs/coleta-local-logon.md).
 
-Entre expirações, atualize o cache após publicar um post:
+O logon já atualiza o cache. Para refletir um post recém-publicado na hora, sem esperar o próximo logon:
 
 ```bash
 yarn scrape seu-username-linkedin
@@ -136,7 +136,7 @@ Guia com contrato JSON e exemplo: [`docs/integracao-site.md`](docs/integracao-si
 |--------|-----------|
 | `yarn auth:login` | Login manual no LinkedIn → `storage/session.json` |
 | `yarn scrape <username>` | Coleta imediata e upsert no Supabase |
-| `yarn scrape:on-logon` | Fluxo do logon: valida sessão; login + scrape só se inválida |
+| `yarn scrape:on-logon` | Fluxo do logon: coleta sempre; abre login manual só se a sessão expirou |
 | `yarn scrape:on-logon --dry-run` | Só verifica a sessão |
 | `yarn scrape:on-logon --force` | Força login + scrape (debug) |
 | `yarn dev` | API REST local + cron (opcional, desenvolvimento) |

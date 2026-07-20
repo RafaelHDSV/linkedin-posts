@@ -13,20 +13,20 @@ Logon Windows (Task Scheduler)
         ↓
   yarn scrape:on-logon
         ↓
-   Sessão válida? ──sim──→ encerra em silêncio (sem janela, sem scrape)
+   Sessão válida? ──sim──→ coleta em silêncio (sem janela) → upsert no Supabase
         │
        não
         ↓
   Abre Chromium → você faz login → chega ao /feed
         ↓
-  yarn scrape (SCRAPE_USERNAME) → upsert no Supabase
+  coleta (SCRAPE_USERNAME) → upsert no Supabase
 ```
 
 | Situação | O que acontece |
 |----------|----------------|
-| Sessão válida no logon | Nada visível; exit 0 |
-| Sessão expirada / ausente | Janela de login → scrape automático após o feed |
-| Você publicou um post e a sessão ainda vale | Rode `yarn scrape <username>` manualmente |
+| Sessão válida no logon | Coleta silenciosa (sem janela) e upsert no Supabase |
+| Sessão expirada / ausente | Janela de login → coleta automática após o feed |
+| Você publicou um post e a sessão ainda vale | O próximo logon já coleta; para atualizar na hora, rode `yarn scrape <username>` |
 
 > 2FA, CAPTCHA e checkpoint são resolvidos **por você** na janela aberta. O projeto não preenche senha nem contorna anti-bot.
 
