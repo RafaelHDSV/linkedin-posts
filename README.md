@@ -212,3 +212,7 @@ Issues e PRs são bem-vindos. Veja [`CONTRIBUTING.md`](CONTRIBUTING.md) e o [`CO
 ## Aviso final
 
 Este software é fornecido “como está”, sob a licença MIT. O LinkedIn pode alterar o HTML a qualquer momento e quebrar o parser. Mantenha a frequência de coleta baixa e monitore falhas nos logs (`falhas_consecutivas` no perfil).
+
+## Apoie
+
+<a href="https://www.buymeacoffee.com/vieira" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me a Coffee" style="height: 60px !important;width: 217px !important;" ></a>
