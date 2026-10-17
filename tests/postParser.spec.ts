@@ -6,6 +6,7 @@ import {
   parsearPostsDoHtml,
   parsearReacoes,
   parsearDataDoUrn,
+  parsearDataPtBr,
   limparTexto,
   inferirTipoMidia,
   urlDoUrn,
@@ -15,6 +16,7 @@ import {
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const html = readFileSync(join(__dirname, "fixtures", "activity-sample.html"), "utf-8");
+const htmlSdui = readFileSync(join(__dirname, "fixtures", "activity-sdui-sample.html"), "utf-8");
 
 describe("parsearReacoes", () => {
   it("interpreta numeros simples", () => {
@@ -51,6 +53,26 @@ describe("parsearDataDoUrn", () => {
   });
 });
 
+describe("parsearDataPtBr", () => {
+  const ref = new Date("2026-10-17T15:00:00.000Z");
+
+  it("converte dia e mes abreviado", () => {
+    expect(parsearDataPtBr("15 de out.", ref)).toBe("2026-10-15T12:00:00.000Z");
+    expect(parsearDataPtBr("8 de out", ref)).toBe("2026-10-08T12:00:00.000Z");
+  });
+
+  it("volta um ano se a data cair no futuro em relacao a referencia", () => {
+    expect(parsearDataPtBr("20 de dez.", new Date("2026-01-05T12:00:00.000Z"))).toBe(
+      "2025-12-20T12:00:00.000Z",
+    );
+  });
+
+  it("retorna vazio para texto invalido", () => {
+    expect(parsearDataPtBr("ontem", ref)).toBe("");
+    expect(parsearDataPtBr(null, ref)).toBe("");
+  });
+});
+
 describe("limparTexto", () => {
   it("remove sufixo …mais e normaliza hashtags", () => {
     const bruto = "Post legal hashtag#React   \n\n    …mais";
@@ -82,7 +104,7 @@ describe("urlDoUrn / normalizePost", () => {
     expect(urlDoUrn(null)).toBeNull();
   });
 
-  it("retorna null sem urn", () => {
+  it("retorna null sem urn nem postId fallback", () => {
     const raw: RawPost = {
       urn: null,
       texto: "x",
@@ -93,6 +115,27 @@ describe("urlDoUrn / normalizePost", () => {
       reacoesTexto: null,
     };
     expect(normalizePost(raw, "rafael")).toBeNull();
+  });
+
+  it("aceita post SDUI com postId e data textual sem urn", () => {
+    const raw: RawPost = {
+      urn: null,
+      postId: "sdui:opaque-key",
+      url: null,
+      publicadoEmTexto: "15 de out.",
+      texto: "post novo",
+      midiaImagens: 0,
+      midiaVideos: 0,
+      midiaDocumentos: 0,
+      midiaUrls: [],
+      reacoesTexto: "3",
+      agora: new Date("2026-10-17T15:00:00.000Z"),
+    };
+    const post = normalizePost(raw, "rafael");
+    expect(post?.postId).toBe("sdui:opaque-key");
+    expect(post?.publicadoEm).toBe("2026-10-15T12:00:00.000Z");
+    expect(post?.url).toBe("");
+    expect(post?.reacoesCount).toBe(3);
   });
 
   it("preenche publicadoEm a partir do urn", () => {
@@ -159,5 +202,32 @@ describe("parsearPostsDoHtml", () => {
     expect(post?.tipoMidia).toBe("documento");
     expect(post?.midiaUrls.length).toBeGreaterThan(0);
     expect(post?.midiaUrls[0]).toContain("document-preview");
+  });
+});
+
+describe("parsearPostsDoHtml SDUI", () => {
+  const posts = parsearPostsDoHtml(htmlSdui, "rafael-vieira1720", {
+    agora: new Date("2026-10-17T15:00:00.000Z"),
+  });
+
+  it("extrai posts do layout novo sem data-urn", () => {
+    expect(posts.length).toBeGreaterThanOrEqual(3);
+    expect(posts.some((p) => p.texto.includes("A IA responde bem"))).toBe(true);
+  });
+
+  it("usa data textual pt-BR quando nao ha snowflake classico", () => {
+    const post = posts.find((p) => p.texto.includes("A IA responde bem"));
+    expect(post?.publicadoEm).toBe("2026-10-15T12:00:00.000Z");
+  });
+
+  it("preserva url feed/update quando o card ainda expoe o href", () => {
+    const post = posts.find((p) => p.texto.includes("Quanto falta para o almoço"));
+    expect(post?.url).toContain("urn:li:activity:7511455502107709440");
+    expect(post?.postId).toBe("urn:li:activity:7511455502107709440");
+  });
+
+  it("gera postId estavel para cards sem urn visivel", () => {
+    const post = posts.find((p) => p.texto.includes("A IA responde bem"));
+    expect(post?.postId).toMatch(/^(sdui:|urn:li:activity:)/);
   });
 });
