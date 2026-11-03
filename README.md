@@ -1,4 +1,4 @@
-# linkedin-posts
+﻿# linkedin-posts
 
 <p align="center">
   <img src="./assets/fluxo-linkedin-posts.png" alt="Fluxo do linkedin-posts: seu PC, Supabase e seu site" width="720" />
@@ -216,3 +216,7 @@ Este software é fornecido “como está”, sob a licença MIT. O LinkedIn pode
 ## Apoie
 
 <a href="https://www.buymeacoffee.com/vieira" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me a Coffee" height="32" width="117" style="height: 32px !important; width: 117px !important;" ></a>
+
+---
+
+Comunidade: [CHANGELOG](CHANGELOG.md) · [CONTRIBUTING](CONTRIBUTING.md) · [CODE_OF_CONDUCT](CODE_OF_CONDUCT.md)
