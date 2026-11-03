@@ -1,4 +1,11 @@
-﻿# linkedin-posts
+﻿<p align="center">
+  <strong>linkedin-posts</strong>
+</p>
+
+<p align="center">
+  <strong>Posts públicos do LinkedIn no seu site — sem scraper na nuvem.</strong><br />
+  Coleta no PC, cache no Supabase, leitura no portfólio/blog.
+</p>
 
 <p align="center">
   <img src="./assets/fluxo-linkedin-posts.png" alt="Fluxo do linkedin-posts: seu PC, Supabase e seu site" width="720" />
@@ -29,6 +36,16 @@ Licença: [MIT](LICENSE).
 - Quem prefere **cache na nuvem** com [Supabase](https://supabase.com) (PostgreSQL gerenciado; o plano gratuito atende este projeto) em vez de manter banco próprio.
 
 **Não é para:** scraping em massa, login automático ou quem não aceita o risco dos Termos do LinkedIn (veja aviso acima).
+
+## Posicionamento
+
+| linkedin-posts é | Não é |
+|---|---|
+| Cache local → Supabase → seu site | SaaS de social listening |
+| Conta secundária + scrape manual | Login automático / bypass de 2FA |
+| Companion do Portifolio | Host do scraper em cron na nuvem (caminho feliz) |
+
+Living docs: [`docs/context.md`](docs/context.md).
 
 ## O que este projeto não faz
 
