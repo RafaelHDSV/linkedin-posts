@@ -6,6 +6,13 @@
 
 Use `CHANGELOG.md` na raiz para releases Keep a Changelog. Este arquivo guarda o detalhe por data.
 
+## 2026-11-04
+
+### Gate `cache_stale` e URLs SDUI (issue #11)
+
+- Coleta falha se `max(publicado_em)` do lote for mais velho que `SCRAPE_STALE_AFTER_DAYS` (default 8).
+- Enriquecimento de URL SDUI mais resiliente (clipboard + fallback); short links `lnkd.in` aceitos.
+
 ## 2026-11-03
 
 ### Living docs (board#7)
@@ -27,3 +34,4 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 ### Adicionado
 
 - Living docs (hub `docs/context.md`), arquivos de comunidade e README no padrão board#7.
+- Gate `cache_stale` (`SCRAPE_STALE_AFTER_DAYS`) e aceitação de short links `lnkd.in` (issue #11).

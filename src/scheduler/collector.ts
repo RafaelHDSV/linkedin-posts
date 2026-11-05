@@ -1,3 +1,4 @@
+import { env } from "../config/env.js";
 import {
   registrarColetaFalha,
   registrarColetaSucesso,
@@ -6,6 +7,7 @@ import { upsertPosts } from "../db/repositories/posts.js";
 import { scrapeProfile } from "../scraper/profileScraper.js";
 import { comBackoff } from "../shared/retry.js";
 import { logger } from "../shared/logger.js";
+import { avaliarFrescorColeta } from "./staleness.js";
 
 export interface ColetaResultado {
   username: string;
@@ -52,6 +54,28 @@ export async function executarColeta(username: string): Promise<ColetaResultado>
         "Falha ao persistir posts no Supabase (scrape ok, gravacao falhou)",
       );
       return { username, status: "erro", postsColetados: 0, erro: "falha_persistencia" };
+    }
+
+    const frescor = avaliarFrescorColeta(resultado.posts, {
+      limiteDias: env.scrapeStaleAfterDays,
+    });
+    if (frescor.stale) {
+      await registrarFalha(username, "cache_stale");
+      logger.error(
+        {
+          username,
+          maxPublicadoEm: frescor.maxPublicadoEm,
+          limiteDias: env.scrapeStaleAfterDays,
+          postsColetados: resultado.posts.length,
+        },
+        "ALERTA: coleta com cache_stale — max(publicado_em) fora da janela; verifique layout SDUI, Copiar link ou sessao",
+      );
+      return {
+        username,
+        status: "erro",
+        postsColetados: resultado.posts.length,
+        erro: "cache_stale",
+      };
     }
 
     await registrarColetaSucesso(username);

@@ -5,6 +5,7 @@ import type { PostDTO } from "../shared/types.js";
 import { launchBrowser, createContext } from "./browser.js";
 import { ensureValidSession } from "./session.js";
 import { limparTexto, parsearPostsDoHtml } from "./postParser.js";
+import { ehUrlPostUtilizavel } from "./urlPost.js";
 
 export type ErroScraping =
   | "sessao_invalida"
@@ -83,6 +84,71 @@ async function aguardarMidiasLazy(page: Page): Promise<void> {
   await page.waitForTimeout(1_500);
 }
 
+type LinkedInClipboardHook = {
+  __linkedinCopyHook?: boolean;
+  __linkedinCopied?: string;
+};
+
+/** Instala hooks para capturar o texto copiado quando a Clipboard API falha (headless). */
+async function instalarCapturaClipboard(page: Page): Promise<void> {
+  // Callback roda no browser; tipagem DOM nao esta no tsconfig do Node.
+  await page.evaluate(() => {
+    const w = globalThis as typeof globalThis & LinkedInClipboardHook;
+    if (w.__linkedinCopyHook) return;
+    w.__linkedinCopyHook = true;
+    w.__linkedinCopied = "";
+
+    const doc = (globalThis as { document?: { addEventListener: Function } }).document;
+    doc?.addEventListener("copy", (evento: { clipboardData?: { getData: (f: string) => string } }) => {
+      try {
+        const texto = evento.clipboardData?.getData("text") ?? "";
+        if (texto) w.__linkedinCopied = texto;
+      } catch {
+        /* ignore */
+      }
+    });
+
+    const nav = globalThis as typeof globalThis & {
+      navigator?: {
+        clipboard?: {
+          writeText: (texto: string) => Promise<void>;
+        };
+      };
+    };
+    const clipboard = nav.navigator?.clipboard;
+    if (clipboard?.writeText) {
+      const original = clipboard.writeText.bind(clipboard);
+      clipboard.writeText = async (texto: string) => {
+        w.__linkedinCopied = texto;
+        return original(texto);
+      };
+    }
+  });
+}
+
+async function lerLinkCopiado(page: Page): Promise<string> {
+  const viaApi = await page
+    .evaluate(async () => {
+      try {
+        const nav = globalThis as typeof globalThis & {
+          navigator?: { clipboard?: { readText: () => Promise<string> } };
+        };
+        return (await nav.navigator?.clipboard?.readText()) ?? "";
+      } catch {
+        return "";
+      }
+    })
+    .catch(() => "");
+  if (viaApi.trim()) return viaApi.trim();
+
+  return page
+    .evaluate(() => {
+      const w = globalThis as typeof globalThis & LinkedInClipboardHook;
+      return (w.__linkedinCopied ?? "").trim();
+    })
+    .catch(() => "");
+}
+
 async function copiarLinkPublicacao(
   page: Page,
   context: BrowserContext,
@@ -95,21 +161,28 @@ async function copiarLinkPublicacao(
   await menu.click({ timeout: 5_000 }).catch(() => undefined);
   await delayAleatorio(400, 800);
 
-  const copy = page.getByText("Copiar link da publicação", { exact: true });
+  const copy = page
+    .getByText(/copiar link da publica[cç][aã]o/i)
+    .or(page.getByText("Copy link to post", { exact: false }))
+    .first();
   if (!(await copy.isVisible().catch(() => false))) {
     await page.keyboard.press("Escape").catch(() => undefined);
     return null;
   }
 
-  await context.grantPermissions(["clipboard-read", "clipboard-write"]).catch(() => undefined);
+  await context
+    .grantPermissions(["clipboard-read", "clipboard-write"], {
+      origin: "https://www.linkedin.com",
+    })
+    .catch(() => undefined);
+  await instalarCapturaClipboard(page);
   await copy.click();
   await delayAleatorio(300, 600);
-  const clip = await page.evaluate(() => navigator.clipboard.readText()).catch(() => "");
+  const link = await lerLinkCopiado(page);
   await page.keyboard.press("Escape").catch(() => undefined);
   await delayAleatorio(200, 400);
 
-  const link = (clip || "").trim();
-  return link.startsWith("http") ? link : null;
+  return ehUrlPostUtilizavel(link) ? link.trim() : null;
 }
 
 /**
@@ -122,7 +195,7 @@ async function enriquecerUrlsSdui(
   username: string,
   posts: PostDTO[],
 ): Promise<PostDTO[]> {
-  const pendentes = posts.filter((p) => !p.url);
+  const pendentes = posts.filter((p) => !ehUrlPostUtilizavel(p.url));
   if (pendentes.length === 0) return posts;
 
   const perfilHref = `/in/${username.toLowerCase()}`;
@@ -142,7 +215,9 @@ async function enriquecerUrlsSdui(
       "";
     const texto = limparTexto(textoBruto).slice(0, 60);
     const post = pendentes.find(
-      (p) => !p.url && (p.texto.startsWith(texto.slice(0, 40)) || texto.startsWith(p.texto.slice(0, 40))),
+      (p) =>
+        !ehUrlPostUtilizavel(p.url) &&
+        (p.texto.startsWith(texto.slice(0, 40)) || texto.startsWith(p.texto.slice(0, 40))),
     );
     if (!post) continue;
 
@@ -150,7 +225,20 @@ async function enriquecerUrlsSdui(
     if (link) {
       post.url = link;
       logger.debug({ postId: post.postId, link }, "URL resolvida via copiar link");
+    } else {
+      logger.warn(
+        { postId: post.postId, itemIndex: i },
+        "Copiar link nao resolveu URL para card SDUI",
+      );
     }
+  }
+
+  const aindaSemUrl = posts.filter((p) => !ehUrlPostUtilizavel(p.url)).length;
+  if (aindaSemUrl > 0) {
+    logger.warn(
+      { username, aindaSemUrl, total: posts.length },
+      "Cards SDUI sem URL utilizavel apos enriquecimento — serao descartados",
+    );
   }
 
   return posts;
@@ -194,8 +282,8 @@ export async function scrapeProfile(username: string, limite = LIMITE_PADRAO): P
     let posts = parsearPostsDoHtml(html, username).slice(0, limite);
     posts = await enriquecerUrlsSdui(page, context, username, posts);
 
-    // Descarta cards sem URL utilizavel apos enriquecimento.
-    posts = posts.filter((p) => Boolean(p.url));
+    // Descarta cards sem URL utilizavel apos enriquecimento (exige link real).
+    posts = posts.filter((p) => ehUrlPostUtilizavel(p.url));
     // Layout misto gera o mesmo post com urn legado e sdui:{opaque}; prefere URL canonica.
     posts = deduplicarPorTexto(posts).slice(0, limite);
 

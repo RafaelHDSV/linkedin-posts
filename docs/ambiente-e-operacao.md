@@ -13,3 +13,11 @@ yarn install
 yarn playwright install chromium
 cp .env.example .env
 ```
+
+Variáveis relevantes da coleta (além de Supabase/sessão em [`.env.example`](../.env.example)):
+
+| Variável | Default | Uso |
+|----------|---------|-----|
+| `SCRAPE_USERNAME` | — | Slug do perfil no logon |
+| `SCRAPE_HEADLESS` | `true` (exceto se `false`) | `false` para depurar o Chromium |
+| `SCRAPE_STALE_AFTER_DAYS` | `8` | Erro `cache_stale` se o post mais recente do lote for mais velho que N dias |

@@ -107,6 +107,7 @@ Para simular sessão expirada: apague `storage/session.json` ou use `--force`.
 | Tarefa não executa | Rode `.\scripts\scrape-on-logon.ps1` manualmente e leia o erro |
 | 0 posts coletados | Perfil sem posts recentes, layout do LinkedIn alterado ou bloqueio — veja logs no terminal |
 | `Defina SCRAPE_USERNAME` | Preencha `SCRAPE_USERNAME` no `.env` |
+| **Exit 0 / UI do portfólio velha** (ex.: parado em um post de semanas atrás) | Sintoma clássico de sucesso cego: scrape devolve só cards antigos com URN e descarta SDUI sem URL. Com o gate atual a coleta deve falhar com **`cache_stale`**. Rode `SCRAPE_HEADLESS=false yarn scrape <username>`, confira logs de “Copiar link”, renove sessão com `yarn auth:login` se preciso, e ajuste `SCRAPE_STALE_AFTER_DAYS` só se a cadência real for > 1 post/semana |
 
 Debug visual do Chromium na coleta: `SCRAPE_HEADLESS=false` no `.env`.
 

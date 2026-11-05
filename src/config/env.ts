@@ -58,6 +58,11 @@ export const env = {
   /** Chave do objeto no bucket (quando provider = supabase). */
   sessionRemotePath: lerString("SESSION_REMOTE_PATH", "session/session.json"),
   scrapeHeadless: process.env.SCRAPE_HEADLESS !== "false",
+  /**
+   * Se o post mais recente do lote for mais velho que N dias, a coleta
+   * falha com cache_stale (evita sucesso silencioso com UI congelada).
+   */
+  scrapeStaleAfterDays: lerNumero("SCRAPE_STALE_AFTER_DAYS", 8),
   logLevel: lerString("LOG_LEVEL", "info"),
 } as const;
 
