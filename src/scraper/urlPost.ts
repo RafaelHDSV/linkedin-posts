@@ -17,7 +17,8 @@ export function ehUrlPostUtilizavel(url: string | null | undefined): boolean {
   const host = parsed.hostname.toLowerCase();
   if (host === "lnkd.in" || host.endsWith(".lnkd.in")) return true;
   if (host === "www.linkedin.com" || host === "linkedin.com") {
-    return parsed.pathname.includes("/feed/update/");
+    const path = parsed.pathname.toLowerCase();
+    return path.includes("/feed/update/") || path.startsWith("/posts/");
   }
   return false;
 }

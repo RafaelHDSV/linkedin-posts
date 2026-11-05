@@ -121,7 +121,7 @@ async function main(): Promise<void> {
     await loginInterativo();
     jaAbriuLogin = true;
   } else {
-    logger.info({ username: USERNAME }, "Sessao LinkedIn valida — coletando no logon.");
+    logger.info({ username: USERNAME }, "Sessao LinkedIn valida - coletando no logon.");
   }
 
   let resultado = await coletarPerfil(USERNAME);

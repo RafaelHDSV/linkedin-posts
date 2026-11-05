@@ -287,7 +287,28 @@ export function extrairMidiaUrls(el: ParsedElement): string[] {
     }
   }
 
-  return [...urls];
+  return preferirMelhoresMidias([...urls]);
+}
+
+/** Uma URL por asset LinkedIn, priorizando high-res / shrink maior. */
+export function preferirMelhoresMidias(urls: string[]): string[] {
+  const score = (url: string): number => {
+    if (/image-high-res/i.test(url)) return 10_000;
+    const shrink = url.match(/shrink_(\d+)/i);
+    if (shrink) return Number(shrink[1]);
+    return 100;
+  };
+  const chave = (url: string): string => {
+    const match = url.match(/\/dms\/image\/(?:v2\/)?([^/?#]+)\//i);
+    return match?.[1] ?? url.replace(/\?.*$/, "");
+  };
+  const melhor = new Map<string, string>();
+  for (const url of urls) {
+    const key = chave(url);
+    const atual = melhor.get(key);
+    if (!atual || score(url) > score(atual)) melhor.set(key, url);
+  }
+  return [...melhor.values()];
 }
 
 export function inferirTipoMidia(raw: Pick<RawPost, "midiaVideos" | "midiaImagens" | "midiaDocumentos">): TipoMidia {

@@ -126,27 +126,42 @@ async function instalarCapturaClipboard(page: Page): Promise<void> {
   });
 }
 
-async function lerLinkCopiado(page: Page): Promise<string> {
-  const viaApi = await page
-    .evaluate(async () => {
-      try {
-        const nav = globalThis as typeof globalThis & {
-          navigator?: { clipboard?: { readText: () => Promise<string> } };
-        };
-        return (await nav.navigator?.clipboard?.readText()) ?? "";
-      } catch {
-        return "";
-      }
-    })
-    .catch(() => "");
-  if (viaApi.trim()) return viaApi.trim();
-
-  return page
+async function limparCapturaClipboard(page: Page): Promise<void> {
+  await page
     .evaluate(() => {
       const w = globalThis as typeof globalThis & LinkedInClipboardHook;
-      return (w.__linkedinCopied ?? "").trim();
+      w.__linkedinCopied = "";
     })
-    .catch(() => "");
+    .catch(() => undefined);
+}
+
+async function lerLinkCopiado(page: Page): Promise<string> {
+  for (let tentativa = 0; tentativa < 10; tentativa++) {
+    const viaApi = await page
+      .evaluate(async () => {
+        try {
+          const nav = globalThis as typeof globalThis & {
+            navigator?: { clipboard?: { readText: () => Promise<string> } };
+          };
+          return (await nav.navigator?.clipboard?.readText()) ?? "";
+        } catch {
+          return "";
+        }
+      })
+      .catch(() => "");
+    if (viaApi.trim()) return viaApi.trim();
+
+    const viaHook = await page
+      .evaluate(() => {
+        const w = globalThis as typeof globalThis & LinkedInClipboardHook;
+        return (w.__linkedinCopied ?? "").trim();
+      })
+      .catch(() => "");
+    if (viaHook) return viaHook;
+
+    await delayAleatorio(100, 180);
+  }
+  return "";
 }
 
 async function copiarLinkPublicacao(
@@ -155,20 +170,14 @@ async function copiarLinkPublicacao(
   itemIndex: number,
 ): Promise<string | null> {
   const item = page.locator('[role="listitem"]').nth(itemIndex);
-  const menu = item.locator('button[aria-label*="menu de controle da publica"]');
-  if ((await menu.count()) === 0) return null;
+  await item.scrollIntoViewIfNeeded().catch(() => undefined);
 
-  await menu.click({ timeout: 5_000 }).catch(() => undefined);
-  await delayAleatorio(400, 800);
-
-  const copy = page
-    .getByText(/copiar link da publica[cç][aã]o/i)
-    .or(page.getByText("Copy link to post", { exact: false }))
+  const menu = item
+    .locator(
+      'button[aria-label*="menu de controle da publica"], button[aria-label*="Open control menu"], button[aria-label*="control menu"]',
+    )
     .first();
-  if (!(await copy.isVisible().catch(() => false))) {
-    await page.keyboard.press("Escape").catch(() => undefined);
-    return null;
-  }
+  if ((await menu.count()) === 0) return null;
 
   await context
     .grantPermissions(["clipboard-read", "clipboard-write"], {
@@ -176,13 +185,33 @@ async function copiarLinkPublicacao(
     })
     .catch(() => undefined);
   await instalarCapturaClipboard(page);
+  await limparCapturaClipboard(page);
+
+  await menu.click({ timeout: 5_000 }).catch(() => undefined);
+  await delayAleatorio(500, 900);
+
+  const copy = page
+    .getByRole("button", { name: /copiar link|copy link/i })
+    .or(page.getByText(/copiar link( da publica[cç][aã]o)?/i))
+    .or(page.getByText(/copy link( to post)?/i))
+    .first();
+  if (!(await copy.isVisible().catch(() => false))) {
+    await page.keyboard.press("Escape").catch(() => undefined);
+    return null;
+  }
+
   await copy.click();
-  await delayAleatorio(300, 600);
+  await delayAleatorio(400, 800);
   const link = await lerLinkCopiado(page);
   await page.keyboard.press("Escape").catch(() => undefined);
   await delayAleatorio(200, 400);
 
-  return ehUrlPostUtilizavel(link) ? link.trim() : null;
+  if (!link) return null;
+  if (!ehUrlPostUtilizavel(link)) {
+    logger.debug({ link: link.slice(0, 120) }, "Clipboard retornou URL nao utilizavel");
+    return null;
+  }
+  return link.trim();
 }
 
 /**
@@ -197,6 +226,13 @@ async function enriquecerUrlsSdui(
 ): Promise<PostDTO[]> {
   const pendentes = posts.filter((p) => !ehUrlPostUtilizavel(p.url));
   if (pendentes.length === 0) return posts;
+
+  await context
+    .grantPermissions(["clipboard-read", "clipboard-write"], {
+      origin: "https://www.linkedin.com",
+    })
+    .catch(() => undefined);
+  await instalarCapturaClipboard(page);
 
   const perfilHref = `/in/${username.toLowerCase()}`;
   const items = page.locator('[role="listitem"]');
@@ -237,7 +273,7 @@ async function enriquecerUrlsSdui(
   if (aindaSemUrl > 0) {
     logger.warn(
       { username, aindaSemUrl, total: posts.length },
-      "Cards SDUI sem URL utilizavel apos enriquecimento — serao descartados",
+      "Cards SDUI sem URL utilizavel apos enriquecimento - serao descartados",
     );
   }
 
