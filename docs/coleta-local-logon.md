@@ -26,6 +26,7 @@ Logon Windows (Task Scheduler)
 |----------|----------------|
 | Sessão válida no logon | Coleta silenciosa (sem janela) e upsert no Supabase |
 | Sessão expirada / ausente | Janela de login → coleta automática após o feed |
+| Sessão “válida” mas coleta `cache_stale` / `sessao_invalida` / captcha | Abre janela de login **na própria automação**, renova a sessão e tenta a coleta de novo (uma vez) |
 | Você publicou um post e a sessão ainda vale | O próximo logon já coleta; para atualizar na hora, rode `yarn scrape <username>` |
 
 > 2FA, CAPTCHA e checkpoint são resolvidos **por você** na janela aberta. O projeto não preenche senha nem contorna anti-bot.
@@ -107,7 +108,7 @@ Para simular sessão expirada: apague `storage/session.json` ou use `--force`.
 | Tarefa não executa | Rode `.\scripts\scrape-on-logon.ps1` manualmente e leia o erro |
 | 0 posts coletados | Perfil sem posts recentes, layout do LinkedIn alterado ou bloqueio — veja logs no terminal |
 | `Defina SCRAPE_USERNAME` | Preencha `SCRAPE_USERNAME` no `.env` |
-| **Exit 0 / UI do portfólio velha** (ex.: parado em um post de semanas atrás) | Sintoma clássico de sucesso cego: scrape devolve só cards antigos com URN e descarta SDUI sem URL. Com o gate atual a coleta deve falhar com **`cache_stale`**. Rode `SCRAPE_HEADLESS=false yarn scrape <username>`, confira logs de “Copiar link”, renove sessão com `yarn auth:login` se preciso, e ajuste `SCRAPE_STALE_AFTER_DAYS` só se a cadência real for > 1 post/semana |
+| **Exit 0 / UI do portfólio velha** (ex.: parado em um post de semanas atrás) | Sintoma clássico de sucesso cego: scrape devolve só cards antigos com URN e descarta SDUI sem URL. Com o gate atual a coleta falha com **`cache_stale`** e o **logon abre a janela de login** para renovar e tentar de novo. Se a janela não aparecer, confira a tarefa (LogonType Interactive) e rode `.\scripts\scrape-on-logon.ps1` manualmente; `yarn auth:login` continua disponível. Ajuste `SCRAPE_STALE_AFTER_DAYS` só se a cadência real for > 1 post/semana |
 
 Debug visual do Chromium na coleta: `SCRAPE_HEADLESS=false` no `.env`.
 

@@ -6,12 +6,20 @@
 
 Use `CHANGELOG.md` na raiz para releases Keep a Changelog. Este arquivo guarda o detalhe por data.
 
+## 2026-11-05
+
+### Falso positivo de data no HTML do card SDUI
+
+- `extrairDataTexto` lia o HTML inteiro: "Agora" no corpo, "15 min" em UI e tokens CSS (`8h`, `455d`) viravam `publicado_em` falso.
+- Data só no cabeçalho (antes de `expandable-text-box`); relativa numérica exige espaço (`6 sem`, não `8h`).
+
 ## 2026-11-04
 
 ### Gate `cache_stale` e URLs SDUI (issue #11)
 
 - Coleta falha se `max(publicado_em)` do lote for mais velho que `SCRAPE_STALE_AFTER_DAYS` (default 8).
 - Enriquecimento de URL SDUI mais resiliente (clipboard + fallback); short links `lnkd.in` aceitos.
+- Datas relativas do feed (`3 sem`, `2 d`, …) passam a preencher `publicado_em` — sem isso o portfólio ignorava posts novos (ordena por data, `nulls last`).
 
 ## 2026-11-03
 

@@ -12,3 +12,4 @@
 4. Service role **nunca** no browser.
 5. Conta LinkedIn secundária; scraping viola ToS — risco assumido pelo usuário.
 6. **Frescor da coleta:** após o upsert, se `max(publicado_em)` do lote for mais antigo que **agora − N dias** (`SCRAPE_STALE_AFTER_DAYS`, default **8**), a coleta é **erro** (`cache_stale`): log ALERTA, `registrarColetaFalha`, sem `registrarColetaSucesso`. Lote vazio ou sem datas válidas também conta como stale. Posts sem URL utilizável (`feed/update` ou `lnkd.in`) são descartados antes do upsert.
+7. **Data do card SDUI:** só no cabeçalho (HTML antes de `expandable-text-box`): absoluta (`15 de out.`), relativa com espaço (`3 sem`, `2 d`, …) ou `"agora"`. Ignora corpo e tokens CSS colados (`8h`, `455d`).

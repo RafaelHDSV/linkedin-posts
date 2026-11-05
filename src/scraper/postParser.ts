@@ -147,6 +147,54 @@ export function parsearDataPtBr(
   return candidato.toISOString();
 }
 
+const MS_MINUTO = 60_000;
+const MS_HORA = 60 * MS_MINUTO;
+const MS_DIA = 24 * MS_HORA;
+const MS_SEMANA = 7 * MS_DIA;
+const MS_MES = 30 * MS_DIA;
+const MS_ANO = 365 * MS_DIA;
+
+/**
+ * Converte datas relativas do feed PT-BR ("3 sem", "2 d", "5 h", "agora") em ISO.
+ * Aproximacao suficiente para ordenar o cache do portfólio.
+ */
+export function parsearDataRelativaPtBr(
+  texto: string | null | undefined,
+  agora: Date = new Date(),
+): string {
+  if (!texto) return "";
+  const limpo = texto
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .replace(/\.$/, "");
+
+  if (limpo === "agora" || limpo === "agora mesmo") {
+    return agora.toISOString();
+  }
+
+  const match = limpo.match(
+    /^(\d+)\s+(min|mins|minuto|minutos|h|hr|hrs|hora|horas|d|dia|dias|sem|semana|semanas|mes|meses|ano|anos)$/i,
+  );
+  if (!match) return "";
+
+  const quantidade = Number(match[1]);
+  const unidade = match[2] ?? "";
+  if (!Number.isInteger(quantidade) || quantidade < 0) return "";
+
+  let deltaMs = 0;
+  if (unidade.startsWith("min")) deltaMs = quantidade * MS_MINUTO;
+  else if (unidade.startsWith("h") || unidade.startsWith("hora")) deltaMs = quantidade * MS_HORA;
+  else if (unidade.startsWith("d") || unidade.startsWith("dia")) deltaMs = quantidade * MS_DIA;
+  else if (unidade.startsWith("sem")) deltaMs = quantidade * MS_SEMANA;
+  else if (unidade.startsWith("mes")) deltaMs = quantidade * MS_MES;
+  else if (unidade.startsWith("ano")) deltaMs = quantidade * MS_ANO;
+  else return "";
+
+  return new Date(agora.getTime() - deltaMs).toISOString();
+}
+
 export function limparTexto(texto: string): string {
   return texto
     .replace(/\s+/g, " ")
@@ -298,10 +346,29 @@ function extrairOpaqueSdui(componentkey: string | null): string | null {
   return match?.[1] ?? null;
 }
 
+// Espaco obrigatorio entre numero e unidade — classes CSS ("i0l8h", "455d") nao contam.
+const RELATIVA_NUMERICA =
+  /\b(\d+\s+(?:sem(?:ana)?s?|dias?|d|min(?:utos?)?|m[eê]s(?:es)?|anos?|horas?|hrs?|h))\b/i;
+const RELATIVA_AGORA = /\b(agora(?:\s+mesmo)?)\b/i;
+
+/**
+ * Data so no cabecalho do card (antes de expandable-text-box).
+ * Evita falsos positivos no corpo ("Agora o X…") e em UI/midia ("15 min").
+ */
 function extrairDataTexto(el: ParsedElement): string | null {
   const html = el.outerHTML ?? el.innerHTML ?? "";
-  const match = html.match(/\b(\d{1,2}\s+de\s+(?:jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)\.?)\b/i);
-  return match?.[1] ?? null;
+  const cabecalho = html.split(/data-testid=["']expandable-text-box["']/i)[0] ?? "";
+
+  const absoluta = cabecalho.match(
+    /\b(\d{1,2}\s+de\s+(?:jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)\.?)\b/i,
+  );
+  if (absoluta?.[1]) return absoluta[1];
+
+  const relativaNumerica = cabecalho.match(RELATIVA_NUMERICA);
+  if (relativaNumerica?.[1]) return relativaNumerica[1];
+
+  const agoraNoCabecalho = cabecalho.match(RELATIVA_AGORA);
+  return agoraNoCabecalho?.[1] ?? null;
 }
 
 function extrairReacoesTexto(el: ParsedElement): string | null {
@@ -354,7 +421,10 @@ export function normalizePost(raw: RawPost, profileUsername: string): PostDTO | 
   const url = raw.url ?? urlDoUrn(urn) ?? "";
   const agora = raw.agora ?? new Date();
   const publicadoEm =
-    (urn ? parsearDataDoUrn(urn) : "") || parsearDataPtBr(raw.publicadoEmTexto, agora) || "";
+    (urn ? parsearDataDoUrn(urn) : "") ||
+    parsearDataPtBr(raw.publicadoEmTexto, agora) ||
+    parsearDataRelativaPtBr(raw.publicadoEmTexto, agora) ||
+    "";
 
   return {
     postId,

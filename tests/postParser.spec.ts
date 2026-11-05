@@ -7,6 +7,7 @@ import {
   parsearReacoes,
   parsearDataDoUrn,
   parsearDataPtBr,
+  parsearDataRelativaPtBr,
   limparTexto,
   inferirTipoMidia,
   urlDoUrn,
@@ -73,6 +74,40 @@ describe("parsearDataPtBr", () => {
   });
 });
 
+describe("parsearDataRelativaPtBr", () => {
+  const ref = new Date("2026-11-04T15:00:00.000Z");
+
+  it("converte semanas e dias", () => {
+    expect(parsearDataRelativaPtBr("3 sem", ref)).toBe(
+      new Date(ref.getTime() - 3 * 7 * 24 * 60 * 60 * 1000).toISOString(),
+    );
+    expect(parsearDataRelativaPtBr("2 d", ref)).toBe(
+      new Date(ref.getTime() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+    );
+  });
+
+  it("converte horas, minutos e agora", () => {
+    expect(parsearDataRelativaPtBr("5 h", ref)).toBe(
+      new Date(ref.getTime() - 5 * 60 * 60 * 1000).toISOString(),
+    );
+    expect(parsearDataRelativaPtBr("10 min", ref)).toBe(
+      new Date(ref.getTime() - 10 * 60 * 1000).toISOString(),
+    );
+    expect(parsearDataRelativaPtBr("agora", ref)).toBe(ref.toISOString());
+  });
+
+  it("converte meses aproximados", () => {
+    expect(parsearDataRelativaPtBr("1 mês", ref)).toBe(
+      new Date(ref.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+    );
+  });
+
+  it("retorna vazio para texto invalido", () => {
+    expect(parsearDataRelativaPtBr("15 de out.", ref)).toBe("");
+    expect(parsearDataRelativaPtBr(null, ref)).toBe("");
+  });
+});
+
 describe("limparTexto", () => {
   it("remove sufixo …mais e normaliza hashtags", () => {
     const bruto = "Post legal hashtag#React   \n\n    …mais";
@@ -136,6 +171,27 @@ describe("urlDoUrn / normalizePost", () => {
     expect(post?.publicadoEm).toBe("2026-10-15T12:00:00.000Z");
     expect(post?.url).toBe("");
     expect(post?.reacoesCount).toBe(3);
+  });
+
+  it("aceita data relativa quando o feed SDUI nao expoe dia/mes", () => {
+    const agora = new Date("2026-11-04T15:00:00.000Z");
+    const raw: RawPost = {
+      urn: null,
+      postId: "sdui:opaque-rel",
+      url: "https://lnkd.in/p/dQjvjxPg",
+      publicadoEmTexto: "3 sem",
+      texto: "A IA responde bem",
+      midiaImagens: 0,
+      midiaVideos: 0,
+      midiaDocumentos: 0,
+      midiaUrls: [],
+      reacoesTexto: null,
+      agora,
+    };
+    const post = normalizePost(raw, "rafael");
+    expect(post?.publicadoEm).toBe(
+      new Date(agora.getTime() - 3 * 7 * 24 * 60 * 60 * 1000).toISOString(),
+    );
   });
 
   it("preenche publicadoEm a partir do urn", () => {
@@ -229,5 +285,52 @@ describe("parsearPostsDoHtml SDUI", () => {
   it("gera postId estavel para cards sem urn visivel", () => {
     const post = posts.find((p) => p.texto.includes("A IA responde bem"));
     expect(post?.postId).toMatch(/^(sdui:|urn:li:activity:)/);
+  });
+});
+
+describe("extrairDataTexto so no cabecalho", () => {
+  const meta = `
+    <a href="https://www.linkedin.com/in/rafael-vieira1720/">perfil</a>
+    <button aria-label="Abrir menu de controle da publicação de Rafael Vieira"></button>`;
+
+  it("nao trata a palavra Agora do texto do post como timestamp", () => {
+    const agora = new Date("2026-11-05T08:22:10.280Z");
+    const htmlCard = `
+      <div role="listitem" componentkey="update-card-focusOPAQUEREPOSFeedType_CREATOR_PROFILE_ALL_CONTENT_VIEW">
+        ${meta}
+        <p data-testid="expandable-text-box">
+          Agora o Repo-Workspace aceita raiz e config de fora.
+        </p>
+      </div>`;
+    const [post] = parsearPostsDoHtml(htmlCard, "rafael-vieira1720", { agora });
+    expect(post?.publicadoEm).toBe("");
+  });
+
+  it("usa relativa do cabecalho e ignora Agora / 15 min no corpo", () => {
+    const agora = new Date("2026-11-05T08:22:10.280Z");
+    const htmlCard = `
+      <div role="listitem" componentkey="update-card-focusOPAQUEREPOSFeedType_CREATOR_PROFILE_ALL_CONTENT_VIEW">
+        ${meta}
+        <p><span>6 sem</span></p>
+        <p data-testid="expandable-text-box">
+          Agora o Repo-Workspace aceita raiz. Video 15 min.
+        </p>
+      </div>`;
+    const [post] = parsearPostsDoHtml(htmlCard, "rafael-vieira1720", { agora });
+    expect(post?.publicadoEm).toBe(
+      new Date(agora.getTime() - 6 * 7 * 24 * 60 * 60 * 1000).toISOString(),
+    );
+  });
+
+  it("nao interpreta tokens CSS tipo 8h/455d como data relativa", () => {
+    const agora = new Date("2026-11-05T08:22:10.280Z");
+    const htmlCard = `
+      <div role="listitem" class="i0l8h i0l455d" componentkey="update-card-focusOPAQUECSSFeedType_CREATOR_PROFILE_ALL_CONTENT_VIEW">
+        ${meta}
+        <p class="i0l952d i0l5h"><span>24 de set.</span></p>
+        <p data-testid="expandable-text-box">Agora o Repo-Workspace aceita raiz.</p>
+      </div>`;
+    const [post] = parsearPostsDoHtml(htmlCard, "rafael-vieira1720", { agora });
+    expect(post?.publicadoEm).toBe("2026-09-24T12:00:00.000Z");
   });
 });
